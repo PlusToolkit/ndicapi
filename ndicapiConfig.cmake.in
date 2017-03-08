@@ -1,0 +1,21 @@
+#-----------------------------------------------------------------------------
+# Configuration file for the Public Library for Ultrasound (PLUS) toolkit
+#
+# © Copyright 2016 The Laboratory for Percutaneous Surgery, Queen's University, Canada
+#
+# This file can be passed to a CMake FIND_PACKAGE call with the following syntax:
+#
+# FIND_PACKAGE(ndicapi <REQUIRED|QUIET> <NO_MODULE>)
+#   If NO_MODULE is included, set the variable ndicapi_DIR:PATH=@CMAKE_BINARY_DIR@
+#
+# Or you can use the following variables to configure your CMake project:
+#  ndicapi_INCLUDE_DIRS - include directories for common API headers
+#  ndicapi_LIBRARIES - list of CMake targets produced by this build
+#-----------------------------------------------------------------------------
+
+# set the targets file
+INCLUDE(@ndicapi_TARGETS_FILE@)
+
+# Tell the user project where to find our headers and libraries
+SET(ndicapi_INCLUDE_DIRS "@ndicapi_INCLUDE_DIRS@")
+SET(ndicapi_LIBRARIES "@ndicapi_LIBRARIES@")
