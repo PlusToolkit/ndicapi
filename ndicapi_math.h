@@ -19,7 +19,7 @@ conditions are met:
 1) Redistribution of the source code, in verbatim or modified
    form, must retain the above copyright notice, this license,
    the following disclaimer, and any notices that refer to this
-   license and/or the following disclaimer.  
+   license and/or the following disclaimer.
 
 2) Redistribution in binary form must include the above copyright
    notice, a copy of this license and the following disclaimer
@@ -53,7 +53,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #include <stdarg.h>
 
 /*=====================================================================*/
-/*! \defgroup NdicapiMath Mathematical Functions 
+/*! \defgroup NdicapiMath Mathematical Functions
 
    These are some useful math functions.  Note that the matrices are
    stored using the OpenGL convention:
@@ -70,7 +70,7 @@ POSSIBILITY OF SUCH DAMAGES.
 */
 
 /*! \ingroup NdicapiMath
-  Find the position and orientation of a tool relative to a 
+  Find the position and orientation of a tool relative to a
   reference tool.  This is done by quaternion division.
 
   \param a   the original tool transformation
@@ -93,7 +93,7 @@ ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16
 
 /*! \ingroup NdicapiMath
   Extract rotation angles from a 4x4 float matrix.  The order of the
-  rotations is: 
+  rotations is:
   -# roll around \em x axis
   -# pitch around \em y axis
   -# yaw around \em z axis
@@ -101,7 +101,7 @@ ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16
 ndicapiExport void ndiAnglesFromMatrixf(float angles[3], const float matrix[16]);
 /*! \ingroup NdicapiMath
   Extract rotation angles from a 4x4 double matrix.  The order of the
-  rotations is: 
+  rotations is:
   -# roll around \em x axis
   -# pitch around \em y axis
   -# yaw around \em z axis
@@ -122,4 +122,5 @@ ndicapiExport void ndiCoordsFromMatrixf(float coords[3], const float matrix[16])
 */
 ndicapiExport void ndiCoordsFromMatrixd(double coords[3], const double matrix[16]);
 
+int asdf();
 #endif
