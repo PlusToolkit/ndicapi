@@ -1,15 +1,5 @@
 /*=======================================================================
 
-  Program:   NDI Combined API C Interface Library
-  Module:    $RCSfile: ndicapi.h,v $
-  Creator:   David Gobbi <dgobbi@atamai.com>
-  Language:  C
-  Author:    $Author: dgobbi $
-  Date:      $Date: 2005/07/01 22:52:05 $
-  Version:   $Revision: 1.5 $
-
-==========================================================================
-
 Copyright (c) 2000-2005 Atamai, Inc.
 
 Use, modification and redistribution of the software, in source or
@@ -19,7 +9,7 @@ conditions are met:
 1) Redistribution of the source code, in verbatim or modified
    form, must retain the above copyright notice, this license,
    the following disclaimer, and any notices that refer to this
-   license and/or the following disclaimer.  
+   license and/or the following disclaimer.
 
 2) Redistribution in binary form must include the above copyright
    notice, a copy of this license and the following disclaimer
@@ -48,21 +38,21 @@ POSSIBILITY OF SUCH DAMAGES.
 */
 
 #ifndef NDICAPI_H
-#define NDICAPI_H 1
-
-#define NDICAPI_MAJOR_VERSION 3
-#define NDICAPI_MINOR_VERSION 1
+#define NDICAPI_H
 
 #include "ndicapiExport.h"
 #include "ndicapi_serial.h"
 
 #include <stdarg.h>
 
+#define NDICAPI_MAJOR_VERSION 1
+#define NDICAPI_MINOR_VERSION 6
+
 struct ndicapi;
 typedef struct ndicapi ndicapi;
 
 /*=====================================================================*/
-/*! \defgroup NDIMethods Core Interface Methods 
+/*! \defgroup NDIMethods Core Interface Methods
 
    These are the primary set of methods for communicating with
    tracking devices from NDI that follow the NDI Combined Application
@@ -80,7 +70,7 @@ typedef struct ndicapi ndicapi;
 
   If \em i is too large, the return value is zero.
 */
-ndicapiExport char *ndiDeviceName(int i);
+ndicapiExport char* ndiDeviceName(int i);
 
 /*! \ingroup NDIMethods
   Probe for an NDI device on the specified serial port device.
@@ -91,9 +81,9 @@ ndicapiExport char *ndiDeviceName(int i);
   -# if the "INIT:" failed, send a serial break and re-try the "INIT:"
   -# if the "INIT:" succeeds, send "VER:0" and check for response.
   -# restore the device to its previous state and close the device.
- 
+
   \param device  name of a valid serial port device
-  
+
   \return one of:
   - NDI_OKAY         -  probe was successful
   - NDI_OPEN_ERROR   -  couldn't open the device
@@ -103,7 +93,7 @@ ndicapiExport char *ndiDeviceName(int i);
   - NDI_TIMEOUT      -  timeout while waiting for data
   - NDI_PROBE_FAIL   -  the device found was not an NDI device
 */
-ndicapiExport int ndiProbe(const char *device);
+ndicapiExport int ndiProbe(const char* device);
 
 /*! \ingroup NDIMethods
   Open communication with the NDI device on the specified
@@ -113,9 +103,9 @@ ndicapiExport int ndiProbe(const char *device);
   \param device  name of a valid serial port device
 
   \return 1 if an NDI device was found on the specified port, 0 otherwise
-  
+
 */
-ndicapiExport ndicapi *ndiOpen(const char *device);
+ndicapiExport ndicapi* ndiOpen(const char* device);
 
 /*! \ingroup NDIMethods
   Close communication with the NDI device.  You should send
@@ -126,13 +116,13 @@ ndicapiExport ndicapi *ndiOpen(const char *device);
   \return  a handle for an NDI device, or zero if device
          could not be opened
 */
-ndicapiExport void ndiClose(ndicapi *pol);
+ndicapiExport void ndiClose(ndicapi* pol);
 
 /*! \ingroup NDIMethods
   Set up multithreading to increase efficiency.
 
   \param pol    valid NDI device handle
-  \param mode   1 to turn on threading, 0 to turn off threading
+  \param mode   true to turn on threading, false to turn off threading
 
   It can take milliseconds or even tens of milliseconds for the tracking
   system to return the transform data after a TX or GX command.  During
@@ -146,7 +136,7 @@ ndicapiExport void ndiClose(ndicapi *pol);
   When the thread mode is set, every time the application sends a GX,
   TX or BX command to the device during tracking mode the
   spawned thread will automatically begin resending the GX/TX/BX
-  command as fast as possible.  
+  command as fast as possible.
   Then when the application sends the next GX/TX/BX command, the
   thread will simply send the application the most recent reply
   instead of forcing the application to wait through a full command/reply
@@ -155,7 +145,7 @@ ndicapiExport void ndiClose(ndicapi *pol);
   If the application changes the reply mode for the GX, TX or BX command,
   then the thread will begin sending commands with the new reply format.
 */
-ndicapiExport void ndiSetThreadMode(ndicapi *pol, int mode);
+ndicapiExport void ndiSetThreadMode(ndicapi* pol, bool mode);
 
 /*! \ingroup NDIMethods
   Send a command to the device using a printf-style format string.
@@ -164,16 +154,16 @@ ndicapiExport void ndiSetThreadMode(ndicapi *pol, int mode);
   \param format a printf-style format string
   \param ...    format arguments as per the format string
 
-  \return       the text reply from the device with the 
+  \return       the text reply from the device with the
                 CRC chopped off
 
   The standard format of an NDI API command is, for example, "INIT:" or
   "PENA:AD".  A CRC value and a carriage return will be appended to the
   command before it is sent to the device.
-  
+
   This function will automatically recogize certain commands and behave
   accordingly:
-  - NULL - A serial break will be sent to the device. 
+  - NULL - A serial break will be sent to the device.
   - "COMM:" - After the COMM is sent, the host computer serial port is
            adjusted to match the device.
   - "INIT:" - After the INIT is sent, communication will be paused
@@ -189,7 +179,7 @@ ndicapiExport void ndiSetThreadMode(ndicapi *pol, int mode);
   - "PSTAT:" - The information returned by the PSTAT command is stored and
            can be retrieved through one of the ndiGetPSTAT() functions.
   - "SSTAT:" - The information returned by the SSTAT command is stored and
-           can be retrieved through one of the ndiGetSSTAT() functions.    
+           can be retrieved through one of the ndiGetSSTAT() functions.
   - "IRCHK:" - The information returned by the IRCHK command is stored and
            can be retrieved through the ndiGetIRCHK() functions.
 
@@ -200,19 +190,19 @@ ndicapiExport void ndiSetThreadMode(ndicapi *pol, int mode);
   For convenience, there is a set of macros for sending commands to the
   devices.  These are listed in \ref NDIMacros.
 */
-ndicapiExport char *ndiCommand(ndicapi *pol, const char *format, ...);
+ndicapiExport char* ndiCommand(ndicapi* pol, const char* format, ...);
 
 /*! \ingroup NDIMethods
   This function is identical in behaviour to ndiCommand(), except that
   it accepts a va_list instead of an argument list.  The use of va_list
   is described in the standard C header file "stdarg.h".
 */
-ndicapiExport char *ndiCommandVA(ndicapi *pol, const char *format, va_list ap);
+ndicapiExport char* ndiCommandVA(ndicapi* pol, const char* format, va_list ap);
 
 /*! \ingroup NDIMethods
   Error callback type for use with ndiSetErrorCallback().
 */
-typedef void (*NDIErrorCallback)(int errnum, char *description, void *userdata);
+typedef void (*NDIErrorCallback)(int errnum, char* description, void* userdata);
 
 /*! \ingroup NDIMethods
   Set a function that will be called each time an error occurs.
@@ -224,11 +214,11 @@ typedef void (*NDIErrorCallback)(int errnum, char *description, void *userdata);
 
   The callback can be set to NULL to erase a previous callback.
 */
-ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
-                         void *userdata);
+ndicapiExport void ndiSetErrorCallback(ndicapi* pol, NDIErrorCallback callback,
+                                       void* userdata);
 
 /*=====================================================================*/
-/*! \defgroup NDIMacros Command Macros 
+/*! \defgroup NDIMacros Command Macros
   These are a set of macros that send commands to the device via
   ndiCommand().
 
@@ -388,7 +378,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 /*!
   Specify a POLARIS tool faces to use for tracking
 
-  \param ph valid port handle in the range 0x01 to 0xFF 
+  \param ph valid port handle in the range 0x01 to 0xFF
   \param tf tool face mask in the range 0x01 to 0xFF
 */
 #define ndiPFSEL(p,ph,tf) ndiCommand((p),"PFSEL:%02X%02X",(ph),(tf))
@@ -396,7 +386,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 /*!
   Free the specified port handle.
 
-  \param ph valid port handle in the range 0x01 to 0xFF 
+  \param ph valid port handle in the range 0x01 to 0xFF
 */
 #define ndiPHF(p,ph) ndiCommand((p),"PHF:%02X",(ph))
 
@@ -429,7 +419,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 
   \param  num    8-digit device number or wildcard "********"
   \param  sys    system type TIU "0" or AURORA SCU "1" or wildcard "*"
-  \param  tool   wired "0" or wireless "1" or wildcard "*" 
+  \param  tool   wired "0" or wireless "1" or wildcard "*"
   \param  port   wired "01" to "10", wireless "0A" to "0I" or wildcard "**"
   \param  chan   AURORA tool channel "00" or "01" or wildcard "**"
 
@@ -462,7 +452,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 /*!
   Initialize the tool on the specified port handle.
 
-  \param ph valid port handle in the range 0x01 to 0xFF 
+  \param ph valid port handle in the range 0x01 to 0xFF
 */
 #define ndiPINIT(p,ph) ndiCommand((p),"PINIT:%02X",(ph))
 
@@ -492,7 +482,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 
 /*!
   Ask for information about the tool ports.  This command has been
-  deprecated in favor of the PHINF command.  
+  deprecated in favor of the PHINF command.
 
   \param format  a reply format mode composed of the following bits:
   - NDI_BASIC           0x0001 - get port status and basic tool information
@@ -531,7 +521,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 */
 #define ndiPVCLR(p,port) ndiCommand((p),"PVCLR:%c",(port))
 
-/*! 
+/*!
   Set the virtual TOOL IN PORT and non-POLARIS tool signals for this port.
   This command has been deprecated in favor of PHRQ.
 
@@ -546,7 +536,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
   The ndiPVWRFromFile() function provides a more convenient means
   of uploading tool descriptions.
 
-  \param ph valid port handle in the range 0x01 to 0xFF 
+  \param ph valid port handle in the range 0x01 to 0xFF
   \param a an address between 0x0000 and 0x07C0
   \param x 64-byte data array encoded as a 128-character hexidecimal string
 
@@ -657,7 +647,7 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
 */
 #define ndiVSEL(p,n) ndiCommand((p),"VSEL:%d",(n))
 
-/*! 
+/*!
   Write data from a ROM file into the virtual SROM for the specified port.
 
   \param pol       valid NDI device handle
@@ -674,13 +664,13 @@ ndicapiExport void ndiSetErrorCallback(ndicapi *pol, NDIErrorCallback callback,
   of the virtual SROM is 1024 bytes.  If the file is shorter than this,
   then zeros will be written to the remaining space in the SROM.
 */
-ndicapiExport int ndiPVWRFromFile(ndicapi *pol, int ph, char *filename);
+ndicapiExport int ndiPVWRFromFile(ndicapi* pol, int ph, char* filename);
 /*\}*/
 
 /*=====================================================================*/
 /*! \defgroup GetMethods Get Methods
   These functions are used to retrieve information that has been stored in
-  the ndicapi object.  
+  the ndicapi object.
   None of these functions communicate with the device itself,
   and none of them cause the error indicator to be set.
 
@@ -701,35 +691,35 @@ ndicapiExport int ndiPVWRFromFile(ndicapi *pol, int ph, char *filename);
   Get error code from the last command.  An error code of NDI_OKAY signals
   that no error occurred.  The error codes are listed in \ref ErrorCodes.
 */
-ndicapiExport int ndiGetError(ndicapi *pol);
+ndicapiExport int ndiGetError(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the name of the serial port device that the device is
   attached to.
 */
-ndicapiExport char *ndiGetDeviceName(ndicapi *pol);
+ndicapiExport char* ndiGetDeviceName(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the device handle for the serial port that the device is
   attached to.  This device handle is the value returned by the UNIX open()
   function or the Win32 CreateFile() function.
 */
-ndicapiExport NDIFileHandle ndiGetDeviceHandle(ndicapi *pol);
+ndicapiExport NDIFileHandle ndiGetDeviceHandle(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Check the current theading mode.  The default is 0 (no multithreading).
 */
-ndicapiExport int ndiGetThreadMode(ndicapi *pol);
+ndicapiExport int ndiGetThreadMode(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the current error callback function, or NULL if there is none.
 */
-ndicapiExport NDIErrorCallback ndiGetErrorCallback(ndicapi *pol);
+ndicapiExport NDIErrorCallback ndiGetErrorCallback(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the current error callback data, or NULL if there is none.
 */
-ndicapiExport void *ndiGetErrorCallbackData(ndicapi *pol);
+ndicapiExport void* ndiGetErrorCallbackData(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the port handle returned by a PHRQ command.
@@ -740,7 +730,7 @@ ndicapiExport void *ndiGetErrorCallbackData(ndicapi *pol);
 
   <p>An SROM can be written to the port handle wit the PVWR command.
 */
-ndicapiExport int ndiGetPHRQHandle(ndicapi *pol);
+ndicapiExport int ndiGetPHRQHandle(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the number of port handles as returned by a PHSR command.
@@ -749,7 +739,7 @@ ndicapiExport int ndiGetPHRQHandle(ndicapi *pol);
 
   \return  an integer, the maximum possible value is 255
 */
-ndicapiExport int ndiGetPHSRNumberOfHandles(ndicapi *pol);
+ndicapiExport int ndiGetPHSRNumberOfHandles(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get one of the port handles returned by a PHSR command.
@@ -763,7 +753,7 @@ ndicapiExport int ndiGetPHSRNumberOfHandles(ndicapi *pol);
   <p>The PHINF command can be used to get detailed information about the
    port handle.
 */
-ndicapiExport int ndiGetPHSRHandle(ndicapi *pol, int i);
+ndicapiExport int ndiGetPHSRHandle(ndicapi* pol, int i);
 
 /*! \ingroup GetMethods
   Get the information for a port handle returned by a PHSR command.
@@ -784,7 +774,7 @@ ndicapiExport int ndiGetPHSRHandle(ndicapi *pol, int i);
   <p>The PHINF command can be used to get detailed information about the
    port handle.
 */
-ndicapiExport int ndiGetPHSRInformation(ndicapi *pol, int i);
+ndicapiExport int ndiGetPHSRInformation(ndicapi* pol, int i);
 
 /*! \ingroup GetMethods
   Get the 8-bit status value for the port handle.
@@ -803,7 +793,7 @@ ndicapiExport int ndiGetPHSRInformation(ndicapi *pol, int i);
   <p>The return value is updated only when a PHINF command is sent with
   the NDI_BASIC (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFPortStatus(ndicapi *pol);
+ndicapiExport int ndiGetPHINFPortStatus(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get a 31-byte string describing the tool.
@@ -820,14 +810,14 @@ ndicapiExport int ndiGetPHINFPortStatus(ndicapi *pol);
   must set information[31] to 0 in order to terminate the string.
   If the port is unoccupied then the contents of the \em information
   string are undefined.
-  
+
   The information is updated only when a PHINF command is sent with
   the NDI_BASIC (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFToolInfo(ndicapi *pol, char information[31]);
+ndicapiExport int ndiGetPHINFToolInfo(ndicapi* pol, char information[31]);
 
 /*! \ingroup GetMethods
-  Return the results of a current test on the IREDS on an active 
+  Return the results of a current test on the IREDS on an active
   POLARIS tool.
 
   \param  ts          valid NDI device handle
@@ -837,7 +827,7 @@ ndicapiExport int ndiGetPHINFToolInfo(ndicapi *pol, char information[31]);
   The information is updated only when a PHINF command is sent with
   the NDI_TESTING (0x0002) bit set in the reply mode.
 */
-ndicapiExport unsigned long ndiGetPHINFCurrentTest(ndicapi *pol);
+ndicapiExport unsigned long ndiGetPHINFCurrentTest(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get a 20-byte string that contains the part number of the tool.
@@ -856,7 +846,7 @@ ndicapiExport unsigned long ndiGetPHINFCurrentTest(ndicapi *pol);
   The information is updated only when a PHINF command is sent with
   the NDI_PART_NUMBER (0x0004) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFPartNumber(ndicapi *pol, char part[20]);
+ndicapiExport int ndiGetPHINFPartNumber(ndicapi* pol, char part[20]);
 
 /*! \ingroup GetMethods
   Get the 8-bit value specifying the tool accessories.
@@ -879,7 +869,7 @@ ndicapiExport int ndiGetPHINFPartNumber(ndicapi *pol, char part[20]);
   The return value is updated only when a PHINF command is sent with
   the NDI_ACCESSORIES (0x0008) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFAccessories(ndicapi *pol);
+ndicapiExport int ndiGetPHINFAccessories(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get an 8-bit value describing the marker type for the tool.
@@ -902,7 +892,7 @@ ndicapiExport int ndiGetPHINFAccessories(ndicapi *pol);
   <p>The return value is updated only when a PHINF command is sent with
   the NDI_MARKER_TYPE (0x0010) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFMarkerType(ndicapi *pol);
+ndicapiExport int ndiGetPHINFMarkerType(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get a 14-byte description of the physical location of the tool
@@ -920,7 +910,7 @@ ndicapiExport int ndiGetPHINFMarkerType(ndicapi *pol);
   <p>The return value is updated only when a PHINF command is sent with
   the NDI_PORT_LOCATION_TYPE (0x0020) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFPortLocation(ndicapi *pol, char location[14]);
+ndicapiExport int ndiGetPHINFPortLocation(ndicapi* pol, char location[14]);
 
 /*! \ingroup GetMethods
   Get the 8-bit GPIO status for this tool.
@@ -932,7 +922,7 @@ ndicapiExport int ndiGetPHINFPortLocation(ndicapi *pol, char location[14]);
   <p>The return value is updated only when a PHINF command is sent with
   the NDI_GPIO_STATUS (0x0040) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi *pol);
+ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the transformation for the specified port.
@@ -943,8 +933,8 @@ ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi *pol);
   \param pol       valid NDI device handle
   \param ph        valid port handle in range 0x01 to 0xFF
   \param transform space for the 8 numbers in the transformation
-  
-  \return one of the following: 
+
+  \return one of the following:
   - NDI_OKAY if successful
   - NDI_DISABLED if tool port is nonexistent or disabled
   - NDI_MISSING if tool transform cannot be computed
@@ -954,8 +944,8 @@ ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi *pol);
 
   The transformations for each of the port handles remain the same
   until the next TX command is sent to device.
-*/ 
-ndicapiExport int ndiGetTXTransform(ndicapi *pol, int ph, double transform[8]);
+*/
+ndicapiExport int ndiGetTXTransform(ndicapi* pol, int ph, double transform[8]);
 
 /*! \ingroup GetMethods
   Get the 16-bit status value for the specified port handle.
@@ -976,7 +966,7 @@ ndicapiExport int ndiGetTXTransform(ndicapi *pol, int ph, double transform[8]);
   This information is updated each time that the TX command
   is sent to the device.
 */
-ndicapiExport int ndiGetTXPortStatus(ndicapi *pol, int ph);
+ndicapiExport int ndiGetTXPortStatus(ndicapi* pol, int ph);
 
 /*! \ingroup GetMethods
   Get the camera frame number for the latest transform.
@@ -989,7 +979,7 @@ ndicapiExport int ndiGetTXPortStatus(ndicapi *pol, int ph);
   This information is updated each time that the TX command
   is sent to the device.
 */
-ndicapiExport unsigned long ndiGetTXFrame(ndicapi *pol, int ph);
+ndicapiExport unsigned long ndiGetTXFrame(ndicapi* pol, int ph);
 
 /*! \ingroup GetMethods
   Get additional information about the tool transformation.
@@ -1005,7 +995,7 @@ ndicapiExport unsigned long ndiGetTXFrame(ndicapi *pol, int ph);
   <p>The tool information is only updated when the TX command is called with
   the NDI_ADDITIONAL_INFO (0x0002) mode bit.
 */
-ndicapiExport int ndiGetTXToolInfo(ndicapi *pol, int ph);
+ndicapiExport int ndiGetTXToolInfo(ndicapi* pol, int ph);
 
 /*! \ingroup GetMethods
   Get additional information about the tool markers.
@@ -1018,12 +1008,12 @@ ndicapiExport int ndiGetTXToolInfo(ndicapi *pol, int ph);
   - NDI_MARKER_MISSING             0
   - NDI_MARKER_EXCEEDED_MAX_ANGLE  1
   - NDI_MARKER_EXCEEDED_MAX_ERROR  2
-  - NDI_MARKER_USED                3  
+  - NDI_MARKER_USED                3
 
   <p>The tool marker information is only updated when the TX command is
   called with the NDI_ADDITIONAL_INFO (0x0002) mode bit set.
 */
-ndicapiExport int ndiGetTXMarkerInfo(ndicapi *pol, int ph, int marker);
+ndicapiExport int ndiGetTXMarkerInfo(ndicapi* pol, int ph, int marker);
 
 /*! \ingroup GetMethods
   Get the coordinates of a stray marker on a wired POLARIS tool.
@@ -1042,18 +1032,18 @@ ndicapiExport int ndiGetTXMarkerInfo(ndicapi *pol, int ph, int marker);
   <p>The stray marker position is only updated when the GX command is
   called with the NDI_SINGLE_STRAY (0x0004) bit set.
 */
-ndicapiExport int ndiGetTXSingleStray(ndicapi *pol, int ph, double coord[3]);
+ndicapiExport int ndiGetTXSingleStray(ndicapi* pol, int ph, double coord[3]);
 
 /*! \ingroup GetMethods
   Get the number of passive stray markers detected.
 
   \param pol       valid NDI device handle
   \return          a number between 0 and 20
-  
+
   The passive stray marker coordinates are updated when a TX command
   is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
 */
-ndicapiExport int ndiGetTXNumberOfPassiveStrays(ndicapi *pol);
+ndicapiExport int ndiGetTXNumberOfPassiveStrays(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Copy the coordinates of the specified stray marker into the
@@ -1069,11 +1059,11 @@ ndicapiExport int ndiGetTXNumberOfPassiveStrays(ndicapi *pol);
 
   <p>Use ndiGetTXNumberOfPassiveStrays() to get the number of stray
   markers that are visible.
-  
+
   The passive stray marker coordinates are updated when a TX command
   is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
 */
-ndicapiExport int ndiGetTXPassiveStray(ndicapi *pol, int i, double coord[3]);
+ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3]);
 
 /*! \ingroup GetMethods
   Get an 16-bit status bitfield for the system.
@@ -1093,7 +1083,7 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi *pol, int i, double coord[3]);
   <p>The system stutus information is updated whenever the TX command is
   called with the NDI_XFORMS_AND_STATUS (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetTXSystemStatus(ndicapi *pol);
+ndicapiExport int ndiGetTXSystemStatus(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the transformation for the specified port.
@@ -1104,8 +1094,8 @@ ndicapiExport int ndiGetTXSystemStatus(ndicapi *pol);
   \param pol       valid NDI device handle
   \param port      one of '1', '2', '3' or 'A' to 'I'
   \param transform space for the 8 numbers in the transformation
-  
-  \return one of the following: 
+
+  \return one of the following:
   - NDI_OKAY if successful
   - NDI_DISABLED if tool port is nonexistent or disabled
   - NDI_MISSING if tool transform cannot be computed
@@ -1123,8 +1113,8 @@ ndicapiExport int ndiGetTXSystemStatus(ndicapi *pol);
   The transformation for any particular port will remain unchanged
   until it is updated by a GX command with an appropriate reply mode
   as specified above.
-*/ 
-ndicapiExport int ndiGetGXTransform(ndicapi *pol, int port, double transform[8]);
+*/
+ndicapiExport int ndiGetGXTransform(ndicapi* pol, int port, double transform[8]);
 
 /*! \ingroup GetMethods
   Get the 8-bit status value for the specified port.
@@ -1145,7 +1135,7 @@ ndicapiExport int ndiGetGXTransform(ndicapi *pol, int port, double transform[8])
   The status of the ports is updated according to the same rules as
   specified for ndiGetGXTransform().
 */
-ndicapiExport int ndiGetGXPortStatus(ndicapi *pol, int port);
+ndicapiExport int ndiGetGXPortStatus(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get an 8-bit status bitfield for the system.
@@ -1160,7 +1150,7 @@ ndicapiExport int ndiGetGXPortStatus(ndicapi *pol, int port);
   <p>The system stutus information is updated whenever the GX command is
   called with the NDI_XFORMS_AND_STATUS (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetGXSystemStatus(ndicapi *pol);
+ndicapiExport int ndiGetGXSystemStatus(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get additional information about the tool transformation.
@@ -1177,7 +1167,7 @@ ndicapiExport int ndiGetGXSystemStatus(ndicapi *pol);
   the NDI_ADDITIONAL_INFO (0x0002) mode bit, and then only for the ports
   specified by the NDI_PASSIVE (0x8000) and NDI_PASSIVE_EXTRA (0x2000) bits.
 */
-ndicapiExport int ndiGetGXToolInfo(ndicapi *pol, int port);
+ndicapiExport int ndiGetGXToolInfo(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get additional information about the tool markers.
@@ -1190,14 +1180,14 @@ ndicapiExport int ndiGetGXToolInfo(ndicapi *pol, int port);
   - NDI_MARKER_MISSING             0
   - NDI_MARKER_EXCEEDED_MAX_ANGLE  1
   - NDI_MARKER_EXCEEDED_MAX_ERROR  2
-  - NDI_MARKER_USED                3  
+  - NDI_MARKER_USED                3
 
   <p>The tool marker information is only updated when the GX command is
   called with the NDI_ADDITIONAL_INFO (0x0002) mode bit set, and then only
   for the ports specified by the NDI_PASSIVE (0x8000) and
   NDI_PASSIVE_EXTRA (0x2000) bits.
 */
-ndicapiExport int ndiGetGXMarkerInfo(ndicapi *pol, int port, int marker);
+ndicapiExport int ndiGetGXMarkerInfo(ndicapi* pol, int port, int marker);
 
 /*! \ingroup GetMethods
   Get the coordinates of a stray marker on an active tool.
@@ -1216,7 +1206,7 @@ ndicapiExport int ndiGetGXMarkerInfo(ndicapi *pol, int port, int marker);
   <p>The stray marker position is only updated when the GX command is
   called with the NDI_SINGLE_STRAY (0x0004) bit set.
 */
-ndicapiExport int ndiGetGXSingleStray(ndicapi *pol, int port, double coord[3]);
+ndicapiExport int ndiGetGXSingleStray(ndicapi* pol, int port, double coord[3]);
 
 /*! \ingroup GetMethods
   Get the camera frame number for the latest transform.
@@ -1230,14 +1220,14 @@ ndicapiExport int ndiGetGXSingleStray(ndicapi *pol, int port, double coord[3]);
   the NDI_FRAME_NUMBER (0x0008) bit, and then only for the ports specified
   by the NDI_PASSIVE (0x8000) and NDI_PASSIVE_EXTRA (0x2000) bits.
 */
-ndicapiExport unsigned long ndiGetGXFrame(ndicapi *pol, int port);
+ndicapiExport unsigned long ndiGetGXFrame(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get the number of passive stray markers detected.
 
   \param pol       valid NDI device handle
   \return          a number between 0 and 20
-  
+
   The passive stray information is updated when a GX command is sent
   with the NDI_PASSIVE_STRAY (0x1000) and NDI_PASSIVE (0x8000) bits set
   in the reply mode.  The information persists until the next time GX is
@@ -1245,7 +1235,7 @@ ndicapiExport unsigned long ndiGetGXFrame(ndicapi *pol, int port);
 
   If no information is available, the return value is zero.
 */
-ndicapiExport int ndiGetGXNumberOfPassiveStrays(ndicapi *pol);
+ndicapiExport int ndiGetGXNumberOfPassiveStrays(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Copy the coordinates of the specified stray marker into the
@@ -1261,13 +1251,13 @@ ndicapiExport int ndiGetGXNumberOfPassiveStrays(ndicapi *pol);
 
   <p>Use ndiGetGXNumberOfPassiveStrays() to get the number of stray
   markers that are visible.
-  
+
   The passive stray marker coordinates are updated when a GX command
   is sent with the NDI_PASSIVE_STRAY (0x1000) and NDI_PASSIVE (0x8000)
   bits set in the reply mode.  The information persists until the next
   time GX is sent with these bits set.
 */
-ndicapiExport int ndiGetGXPassiveStray(ndicapi *pol, int i, double coord[3]);
+ndicapiExport int ndiGetGXPassiveStray(ndicapi* pol, int i, double coord[3]);
 
 /*! \ingroup GetMethods
   Get the 8-bit status value for the specified port.
@@ -1289,7 +1279,7 @@ ndicapiExport int ndiGetGXPassiveStray(ndicapi *pol, int i, double coord[3]);
   The return value is updated only when a PSTAT command is sent with
   the NDI_BASIC (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPSTATPortStatus(ndicapi *pol, int port);
+ndicapiExport int ndiGetPSTATPortStatus(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get a 30-byte string describing the tool in the specified port.
@@ -1307,15 +1297,15 @@ ndicapiExport int ndiGetPSTATPortStatus(ndicapi *pol, int port);
   must set information[30] to 0 in order to terminate the string.
   If the port is unoccupied then the contents of the \em information
   string are undefined.
-  
+
   The information is updated only when a PSTAT command is sent with
   the NDI_BASIC (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPSTATToolInfo(ndicapi *pol, int port, char information[30]);
+ndicapiExport int ndiGetPSTATToolInfo(ndicapi* pol, int port, char information[30]);
 
 /*! \ingroup GetMethods
   Return the results of a current test on the IREDS on the specified
-  tool.  
+  tool.
 
   \param  ts          valid NDI device handle
   \param  port        one of '1', '2', '3'
@@ -1325,7 +1315,7 @@ ndicapiExport int ndiGetPSTATToolInfo(ndicapi *pol, int port, char information[3
   The information is updated only when a PSTAT command is sent with
   the NDI_TESTING (0x0002) bit set in the reply mode.
 */
-ndicapiExport unsigned long ndiGetPSTATCurrentTest(ndicapi *pol, int port);
+ndicapiExport unsigned long ndiGetPSTATCurrentTest(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get a 20-byte string that contains the part number of the tool.
@@ -1345,7 +1335,7 @@ ndicapiExport unsigned long ndiGetPSTATCurrentTest(ndicapi *pol, int port);
   The information is updated only when a PSTAT command is sent with
   the NDI_PART_NUMBER (0x0004) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPSTATPartNumber(ndicapi *pol, int port, char part[20]);
+ndicapiExport int ndiGetPSTATPartNumber(ndicapi* pol, int port, char part[20]);
 
 /*! \ingroup GetMethods
   Get the 8-bit value specifying the accessories for the specified tool.
@@ -1370,7 +1360,7 @@ ndicapiExport int ndiGetPSTATPartNumber(ndicapi *pol, int port, char part[20]);
   The return value is updated only when a PSTAT command is sent with
   the NDI_ACCESSORIES (0x0008) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPSTATAccessories(ndicapi *pol, int port);
+ndicapiExport int ndiGetPSTATAccessories(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get an 8-bit value describing the marker type for the tool.
@@ -1397,7 +1387,7 @@ ndicapiExport int ndiGetPSTATAccessories(ndicapi *pol, int port);
   The return value is updated only when a PSTAT command is sent with
   the NDI_MARKER_TYPE (0x0010) bit set in the reply mode.
 */
-ndicapiExport int ndiGetPSTATMarkerType(ndicapi *pol, int port);
+ndicapiExport int ndiGetPSTATMarkerType(ndicapi* pol, int port);
 
 /*! \ingroup GetMethods
   Get the status of the control processor.
@@ -1411,7 +1401,7 @@ ndicapiExport int ndiGetPSTATMarkerType(ndicapi *pol, int port);
   <p>This information is updated only when the SSTAT command is sent
   with the NDI_CONTROL (0x0001) bit set in the reply mode.
 */
-ndicapiExport int ndiGetSSTATControl(ndicapi *pol);
+ndicapiExport int ndiGetSSTATControl(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the status of the sensor processors.
@@ -1429,7 +1419,7 @@ ndicapiExport int ndiGetSSTATControl(ndicapi *pol);
   <p>This information is updated only when the SSTAT command is sent
   with the NDI_SENSORS (0x0002) bit set in the reply mode.
 */
-ndicapiExport int ndiGetSSTATSensors(ndicapi *pol);
+ndicapiExport int ndiGetSSTATSensors(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the status of the sensor processors.
@@ -1447,19 +1437,19 @@ ndicapiExport int ndiGetSSTATSensors(ndicapi *pol);
   <p>This information is updated only when the SSTAT command is sent
   with the NDI_TIU (0x0004) bit set in the reply mode.
 */
-ndicapiExport int ndiGetSSTATTIU(ndicapi *pol);
+ndicapiExport int ndiGetSSTATTIU(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Check to see whether environmental infrared was detected.
- 
+
   \param pol    valid NDI device handle
-  
+
   \return       1 if infrared was detected and 0 otherwise.
 
   This information is only updated if the IRCHK command is called
   with the NDI_DETECTED (0x0001) format bit set.
 */
-ndicapiExport int ndiGetIRCHKDetected(ndicapi *pol);
+ndicapiExport int ndiGetIRCHKDetected(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Get the number of infrared sources seen by one of the two sensors.
@@ -1473,11 +1463,11 @@ ndicapiExport int ndiGetIRCHKDetected(ndicapi *pol);
   has been called with the NDI_SOURCES (0x0002) format bit set.  Otherwise,
   the return value will be zero.
 */
-ndicapiExport int ndiGetIRCHKNumberOfSources(ndicapi *pol, int side);
+ndicapiExport int ndiGetIRCHKNumberOfSources(ndicapi* pol, int side);
 
 /*! \ingroup GetMethods
   Get the coordinates of one of the infrared sources seen by one of
-  the two sensors. 
+  the two sensors.
 
   \param pol    valid NDI device handle
   \param side   one of NDI_LEFT or NDI_RIGHT
@@ -1492,7 +1482,7 @@ ndicapiExport int ndiGetIRCHKNumberOfSources(ndicapi *pol, int side);
   This information is valid only immediately after the IRCHK command
   has been called with the NDI_SOURCES (0x0002) format bit set.
 */
-ndicapiExport int ndiGetIRCHKSourceXY(ndicapi *pol, int side, int i, double xy[2]);
+ndicapiExport int ndiGetIRCHKSourceXY(ndicapi* pol, int side, int i, double xy[2]);
 
 /*=====================================================================*/
 /*! \defgroup ConversionFunctions Conversion Functions
@@ -1506,7 +1496,7 @@ ndicapiExport int ndiGetIRCHKSourceXY(ndicapi *pol, int side, int i, double xy[2
 
   An unrecognized error code will return "Unrecognized error code".
 */
-ndicapiExport char *ndiErrorString(int errnum);
+ndicapiExport char* ndiErrorString(int errnum);
 
 /*! \ingroup ConversionFunctions
   Convert \em n characters of a hexidecimal string into an unsigned long.
@@ -1515,7 +1505,7 @@ ndicapiExport char *ndiErrorString(int errnum);
   The primary use of this function is decoding replies from the
   device.
 */
-ndicapiExport unsigned long ndiHexToUnsignedLong(const char *cp, int n);
+ndicapiExport unsigned long ndiHexToUnsignedLong(const char* cp, int n);
 
 /*! \ingroup ConversionFunctions
   Convert \em n characters of a signed decimal string to a long.
@@ -1525,7 +1515,7 @@ ndicapiExport unsigned long ndiHexToUnsignedLong(const char *cp, int n);
   The primary use of this function is decoding replies from the
   device.
 */
-ndicapiExport long ndiSignedToLong(const char *cp, int n);
+ndicapiExport long ndiSignedToLong(const char* cp, int n);
 
 /*! \ingroup ConversionFunctions
   This function is used to convert raw binary data into a stream of
@@ -1539,7 +1529,7 @@ ndicapiExport long ndiSignedToLong(const char *cp, int n);
   before calling this function, otherwise the string will be left
   unterminated.
 */
-ndicapiExport char *ndiHexEncode(char *cp, const void *data, int n);
+ndicapiExport char* ndiHexEncode(char* cp, const void* data, int n);
 
 /*! \ingroup ConversionFunctions
   This function converts a hex-encoded string into binary data.
@@ -1550,11 +1540,11 @@ ndicapiExport char *ndiHexEncode(char *cp, const void *data, int n);
 
   As a convenience, the return value is a pointer to the decoded data.
 */
-ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
+ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 
 /*=====================================================================*/
-/*! \defgroup ErrorCodes Error Codes 
-  The error code is set only by ndiCommand() or by 
+/*! \defgroup ErrorCodes Error Codes
+  The error code is set only by ndiCommand() or by
   macros and functions that call ndiCommand().
 
   Error codes that equal to or less than 0xff are error codes reported
@@ -1566,7 +1556,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 */
 
 /*\{*/
-#define NDI_OKAY            0x00  /*!<\brief No error */     
+#define NDI_OKAY            0x00  /*!<\brief No error */
 #define NDI_INVALID         0x01  /*!<\brief Invalid command */
 #define NDI_TOO_LONG        0x02  /*!<\brief Command too long */
 #define NDI_TOO_SHORT       0x03  /*!<\brief Command too short */
@@ -1599,7 +1589,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 #define NDI_SROM_READ       0x1e  /*!<\brief Failure to read SROM data */
 #define NDI_SROM_WRITE      0x1f  /*!<\brief Failure to write SROM data */
 #define NDI_SROM_SELECT     0x20  /*!<\brief Failure to select SROM */
-#define NDI_PORT_CURRENT    0x21  /*!<\brief Failure to perform tool current test */ 
+#define NDI_PORT_CURRENT    0x21  /*!<\brief Failure to perform tool current test */
 #define NDI_WAVELENGTH      0x22 /*!<\brief No camera parameters for this wavelength*/
 #define NDI_PARAMETER_RANGE 0x23  /*!<\brief Command parameter out of range */
 #define NDI_VOLUME          0x24  /*!<\brief No camera parameters for this volume */
@@ -1626,8 +1616,8 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 
 /* ndiCOMM() baud rates */
 /*\{*/
-#define  NDI_9600     0          
-#define  NDI_14400    1 
+#define  NDI_9600     0
+#define  NDI_14400    1
 #define  NDI_19200    2
 #define  NDI_38400    3
 #define  NDI_57600    4
@@ -1649,7 +1639,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 #define  NDI_7O1    110
 #define  NDI_7O2    111
 #define  NDI_7E1    120
-#define  NDI_7E2    121 
+#define  NDI_7E2    121
 /*\}*/
 
 /* ndiCOMM() hardware handshaking */
@@ -1669,7 +1659,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 
 /* ndiPENA() tracking modes */
 /*\{*/
-#define  NDI_STATIC      'S'    /* relatively immobile tool */ 
+#define  NDI_STATIC      'S'    /* relatively immobile tool */
 #define  NDI_DYNAMIC     'D'    /* dynamic tool (e.g. probe) */
 #define  NDI_BUTTON_BOX  'B'    /* tool with no IREDs */
 /*\}*/
@@ -1687,8 +1677,8 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 
 /* return values that give the reason behind missing data */
 /*\{*/
-#define NDI_DISABLED        1  
-#define NDI_MISSING         2  
+#define NDI_DISABLED        1
+#define NDI_MISSING         2
 #define NDI_UNOCCUPIED      3
 /*\}*/
 
@@ -1701,7 +1691,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 #define  NDI_INITIALIZED         0x10
 #define  NDI_ENABLED             0x20
 #define  NDI_OUT_OF_VOLUME       0x40 /* only for ndiGetGXPortStatus() */
-#define  NDI_PARTIALLY_IN_VOLUME 0x80 /* only for ndiGetGXPortStatus() */ 
+#define  NDI_PARTIALLY_IN_VOLUME 0x80 /* only for ndiGetGXPortStatus() */
 #define  NDI_CURRENT_DETECT      0x80 /* only for ndiGetPSTATPortStatus() */
 /*\}*/
 
@@ -1761,7 +1751,7 @@ ndicapiExport void *ndiHexDecode(void *data, const char *cp, int n);
 #define  NDI_LED_2                 0x40  /* tool has LED #2 */
 #define  NDI_LED_3                 0x80  /* tool has LED #3 */
 /*\}*/
-  
+
 /* ndiGetPSTATMarkerType() return value, the first 3 bits */
 /*\{*/
 #define NDI_950NM            0x00

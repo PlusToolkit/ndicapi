@@ -1,15 +1,5 @@
 /*=======================================================================
 
-  Program:   NDI Combined API C Interface Library
-  Module:    $RCSfile: ndicapi_thread.h,v $
-  Creator:   David Gobbi <dgobbi@atamai.com>
-  Language:  C
-  Author:    $Author: dgobbi $
-  Date:      $Date: 2005/07/01 22:52:05 $
-  Version:   $Revision: 1.3 $
-
-==========================================================================
-
 Copyright (c) 2000-2005 Atamai, Inc.
 
 Use, modification and redistribution of the software, in source or
@@ -19,7 +9,7 @@ conditions are met:
 1) Redistribution of the source code, in verbatim or modified
    form, must retain the above copyright notice, this license,
    the following disclaimer, and any notices that refer to this
-   license and/or the following disclaimer.  
+   license and/or the following disclaimer.
 
 2) Redistribution in binary form must include the above copyright
    notice, a copy of this license and the following disclaimer
@@ -48,7 +38,7 @@ POSSIBILITY OF SUCH DAMAGES.
 */
 
 #ifndef NDICAPI_THREAD_H
-#define NDICAPI_THREAD_H 1
+#define NDICAPI_THREAD_H
 
 #include "ndicapiExport.h"
 
@@ -78,14 +68,15 @@ typedef HANDLE NDIEvent;
 #include <errno.h>
 #include <pthread.h>
 
-typedef struct {
+typedef struct
+{
   int signalled;
   pthread_cond_t cond;
   pthread_mutex_t mutex;
 } pl_cond_and_mutex_t;
 typedef pthread_t NDIThread;
-typedef pthread_mutex_t *NDIMutex;
-typedef pl_cond_and_mutex_t *NDIEvent;
+typedef pthread_mutex_t* NDIMutex;
+typedef pl_cond_and_mutex_t* NDIEvent;
 
 #endif
 
@@ -99,7 +90,7 @@ ndicapiExport void ndiEventDestroy(NDIEvent event);
 ndicapiExport void ndiEventSignal(NDIEvent event);
 ndicapiExport int ndiEventWait(NDIEvent event, int milliseconds);
 
-ndicapiExport NDIThread ndiThreadSplit(void *thread_func(void *userdata), void *userdata);
-ndicapiExport void ndiThreadJoin(NDIThread thread);
+ndicapiExport NDIThread ndiThreadSplit(void* thread_func(void* userdata), void* userdata);
+ndicapiExport void ndiThreadJoin(NDIThread Thread);
 
 #endif

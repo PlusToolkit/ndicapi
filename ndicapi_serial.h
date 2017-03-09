@@ -19,7 +19,7 @@ conditions are met:
 1) Redistribution of the source code, in verbatim or modified
    form, must retain the above copyright notice, this license,
    the following disclaimer, and any notices that refer to this
-   license and/or the following disclaimer.  
+   license and/or the following disclaimer.
 
 2) Redistribution in binary form must include the above copyright
    notice, a copy of this license and the following disclaimer
@@ -48,7 +48,7 @@ POSSIBILITY OF SUCH DAMAGES.
 */
 
 #ifndef NDICAPI_SERIAL_H
-#define NDICAPI_SERIAL_H 1
+#define NDICAPI_SERIAL_H
 
 #include "ndicapiExport.h"
 
@@ -66,55 +66,55 @@ POSSIBILITY OF SUCH DAMAGES.
 
 #ifdef _WIN32
 
-#include <windows.h>
-typedef HANDLE NDIFileHandle;
-#define NDI_INVALID_HANDLE INVALID_HANDLE_VALUE
+  #include <windows.h>
+  typedef HANDLE NDIFileHandle;
+  #define NDI_INVALID_HANDLE INVALID_HANDLE_VALUE
 
 #elif defined(unix) || defined(__unix__) || defined(__APPLE__)
 
-typedef int NDIFileHandle;
-#define NDI_INVALID_HANDLE -1
+  typedef int NDIFileHandle;
+  #define NDI_INVALID_HANDLE -1
 
-#if defined(linux) || defined(__linux__)
-#define NDI_NUMBER_OF_DEVICES 7
-#define NDI_DEVICE0    "/dev/ttyS0"
-#define NDI_DEVICE1    "/dev/ttyS1"
-#define NDI_DEVICE2    "/dev/ttyUSB0"
-#define NDI_DEVICE3    "/dev/ttyUSB1"
-#define NDI_DEVICE4    "/dev/ttyUSB2"
-#define NDI_DEVICE5    "/dev/ttyUSB3"
-#define NDI_DEVICE6     "/dev/ttyUSB4"
-#define NDI_DEVICE7    "/dev/ttyUSB5"
+  #if defined(linux) || defined(__linux__)
+    #define NDI_NUMBER_OF_DEVICES 7
+    #define NDI_DEVICE0    "/dev/ttyS0"
+    #define NDI_DEVICE1    "/dev/ttyS1"
+    #define NDI_DEVICE2    "/dev/ttyUSB0"
+    #define NDI_DEVICE3    "/dev/ttyUSB1"
+    #define NDI_DEVICE4    "/dev/ttyUSB2"
+    #define NDI_DEVICE5    "/dev/ttyUSB3"
+    #define NDI_DEVICE6     "/dev/ttyUSB4"
+    #define NDI_DEVICE7    "/dev/ttyUSB5"
 
-#elif defined(__APPLE__)
-#define NDI_NUMBER_OF_DEVICES 0
-#elif defined(sgi)
-#define NDI_NUMBER_OF_DEVICES 4
-#define NDI_DEVICE0    "/dev/ttyd1"
-#define NDI_DEVICE1    "/dev/ttyd2"
-#define NDI_DEVICE2    "/dev/ttyd3"
-#define NDI_DEVICE3    "/dev/ttyd4"
-#define NDI_DEVICE4    "/dev/ttyd5"
-#define NDI_DEVICE5    "/dev/ttyd6"
-#define NDI_DEVICE6    "/dev/ttyd7"
-#define NDI_DEVICE7    "/dev/ttyd8"
-#else
-#define NDI_NUMBER_OF_DEVICES 2
-#define NDI_DEVICE0    "/dev/ttya"
-#define NDI_DEVICE1    "/dev/ttyb"
-#endif
+  #elif defined(__APPLE__)
+    #define NDI_NUMBER_OF_DEVICES 0
+  #elif defined(sgi)
+    #define NDI_NUMBER_OF_DEVICES 4
+    #define NDI_DEVICE0    "/dev/ttyd1"
+    #define NDI_DEVICE1    "/dev/ttyd2"
+    #define NDI_DEVICE2    "/dev/ttyd3"
+    #define NDI_DEVICE3    "/dev/ttyd4"
+    #define NDI_DEVICE4    "/dev/ttyd5"
+    #define NDI_DEVICE5    "/dev/ttyd6"
+    #define NDI_DEVICE6    "/dev/ttyd7"
+    #define NDI_DEVICE7    "/dev/ttyd8"
+  #else
+    #define NDI_NUMBER_OF_DEVICES 2
+    #define NDI_DEVICE0    "/dev/ttya"
+    #define NDI_DEVICE1    "/dev/ttyb"
+  #endif
 
 #elif defined(macintosh)
 
-typedef long NDIFileHandle;
-#define NDI_INVALID_HANDLE -1
-/* macros to extract input and output file handles */
-#define output_file(serial_port) ((short)((serial_port & 0xff00) >> 16));
-#define input_file(serial_port) ((short)((serial_port & 0x00ff) >> 0));
+  typedef long NDIFileHandle;
+  #define NDI_INVALID_HANDLE -1
+  /* macros to extract input and output file handles */
+  #define output_file(serial_port) ((short)((serial_port & 0xff00) >> 16));
+  #define input_file(serial_port) ((short)((serial_port & 0x00ff) >> 0));
 
-#define NDI_NUMBER_OF_DEVICES 2
-#define NDI_DEVICE0    "\p.A"
-#define NDI_DEVICE1    "\p.B"
+  #define NDI_NUMBER_OF_DEVICES 2
+  #define NDI_DEVICE0    "\p.A"
+  #define NDI_DEVICE1    "\p.B"
 
 #endif
 
@@ -127,15 +127,15 @@ typedef long NDIFileHandle;
   names for the first four serial ports, e.g. "/dev/ttyS0" on linux.
 
   The type of the handle is platform-specific.
-*/ 
-ndicapiExport NDIFileHandle ndiSerialOpen(const char *device);
+*/
+ndicapiExport NDIFileHandle ndiSerialOpen(const char* device);
 
 /*! \ingroup NDISerial
   Close the serial port.  It is wise to send a "COMM 00000\r" command
   to the NDICAPI before you close the port, otherwise the next time the
   serial port is opened you will have to reset the NDICAPI before you can
   resume communication with it.
-*/ 
+*/
 ndicapiExport void ndiSerialClose(NDIFileHandle serial_port);
 
 /*! \ingroup NDISerial
@@ -190,14 +190,14 @@ ndicapiExport int ndiSerialFlush(NDIFileHandle serial_port, int flushtype);
   is (9600, "8N1", 0).  A commonly used setting is (115200, "8N1", 1).
 
   Before this function is called you should send a COMM command to the
-  ndicapi and read the "OKAY" reply. 
+  ndicapi and read the "OKAY" reply.
 
   The return value will be 0 if the call was successful.
   A negative return value means that an IO error occurred, or that
   the specified parameters are not available for this serial port.
-*/ 
-ndicapiExport int ndiSerialComm(NDIFileHandle serial_port, int baud, const char *mode,
-                  int handshake);
+*/
+ndicapiExport int ndiSerialComm(NDIFileHandle serial_port, int baud, const char* mode,
+                                int handshake);
 
 /*! \ingroup NDISerial
   Change the timeout for the serial port in milliseconds.
@@ -221,7 +221,7 @@ ndicapiExport int ndiSerialTimeout(NDIFileHandle serial_port, int milliseconds);
   If the return value is negative, then an IO error occurred.
   If the return value is less than 'n', then a timeout error occurred.
 */
-ndicapiExport int ndiSerialWrite(NDIFileHandle serial_port, const char *text, int n);
+ndicapiExport int ndiSerialWrite(NDIFileHandle serial_port, const char* text, int n);
 
 /*! \ingroup NDISerial
   Read characters from the serial port until a carriage return is
@@ -236,11 +236,11 @@ ndicapiExport int ndiSerialWrite(NDIFileHandle serial_port, const char *text, in
   read was incomplete and there are more characters waiting to
   be read.
 */
-ndicapiExport int ndiSerialRead(NDIFileHandle serial_port, char *reply, int n);
+ndicapiExport int ndiSerialRead(NDIFileHandle serial_port, char* reply, int n);
 
 /*! \ingroup NDISerial
   Sleep for the specified number of milliseconds.  The actual sleep time
-  is likely to last for 10ms longer than the specifed time due to 
+  is likely to last for 10ms longer than the specifed time due to
   task scheduling overhead.  The return value is always zero.
 */
 ndicapiExport int ndiSerialSleep(NDIFileHandle serial_port, int milliseconds);
