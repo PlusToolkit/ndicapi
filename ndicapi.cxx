@@ -42,6 +42,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 
 #if defined(__APPLE__)
   #include <dirent.h>
@@ -143,7 +144,7 @@ struct ndicapi
   char PhinfGpioStatus[2];
 
   // TX command reply data
-  int TxNhandles;
+  int TxHandleCount;
   unsigned char TxHandles[NDI_MAX_HANDLES];
   char TxTransforms[NDI_MAX_HANDLES][52];
   char TxStatus[NDI_MAX_HANDLES][8];
@@ -152,9 +153,31 @@ struct ndicapi
   char TxSingleStray[NDI_MAX_HANDLES][24];
   char TxSystemStatus[4];
 
-  int TxNpassiveStray;
+  int TxPassiveStrayCount;
   char TxPassiveStrayOov[14];
   char TxPassiveStray[1052];
+
+  // BX command reply data
+  unsigned short BxHandleCount;
+  char BxHandles[NDI_MAX_HANDLES];
+  char BxHandlesStatus[NDI_MAX_HANDLES];
+  unsigned int BxFrameNumber[NDI_MAX_HANDLES];
+  float BxTransforms[NDI_MAX_HANDLES][8];
+  int BxPortStatus[NDI_MAX_HANDLES];
+  char BxToolMarkerInformation[NDI_MAX_HANDLES][11];
+
+  char BxActiveSingleStrayMarkerStatus[NDI_MAX_HANDLES];
+  float BxActiveSingleStrayMarkerPosition[NDI_MAX_HANDLES][3];
+
+  char Bx3DMarkerCount[NDI_MAX_HANDLES];
+  char Bx3DMarkerOutOfVolume[NDI_MAX_HANDLES][3]; // 3 bytes holds 1 bit entries for up to 24 markers (but 20 is max)
+  float Bx3DMarkerPosition[NDI_MAX_HANDLES][20][3]; // a tool can have up to 20 markers
+
+  int BxPassiveStrayCount;
+  char BxPassiveStrayOutOfVolume[30]; // 30 bytes holds 1 bit entries for up to 240 markers
+  float BxPassiveStrayPosition[240][3]; // hold up to 240 stray markers
+
+  int BxSystemStatus;
 };
 
 //----------------------------------------------------------------------------
@@ -164,7 +187,7 @@ struct ndicapi
 // there is one.  The return value is equal to errnum.
 namespace
 {
-  int ndi_set_error(ndicapi* pol, int errnum)
+  int ndiSetError(ndicapi* pol, int errnum)
   {
     pol->ErrorCode = errnum;
 
@@ -198,7 +221,7 @@ ndicapiExport void* ndiGetErrorCallbackData(ndicapi* pol)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport unsigned long ndiHexToUnsignedLong(const char* cp, int n)
+ndicapiExport unsigned long ndiHexToUnsignedLong(const char* string, int n)
 {
   int i;
   unsigned long result = 0;
@@ -206,7 +229,7 @@ ndicapiExport unsigned long ndiHexToUnsignedLong(const char* cp, int n)
 
   for (i = 0; i < n; i++)
   {
-    c = cp[i];
+    c = string[i];
     if (c >= 'a' && c <= 'f')
     {
       result = (result << 4) | (c + (10 - 'a'));
@@ -857,7 +880,7 @@ namespace
   //
   // This information can be later extracted through one of the ndiGetPHINFxx()
   // functions.
-  void ndi_PHINF_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiPHINFHelper(ndicapi* pol, const char* cp, const char* crp)
   {
     unsigned long mode = 0x0001; // the default reply mode
     char* dp;
@@ -1031,7 +1054,7 @@ namespace
   //
   //This information can be later extracted through one of the ndiGetPHRQHandle()
   //functions.
-  void ndi_PHRQ_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiPHRQHelper(ndicapi* pol, const char* cp, const char* crp)
   {
     char* dp;
     int j;
@@ -1051,17 +1074,17 @@ namespace
   //
   // This information can be later extracted through one of the ndiGetPHSRxx()
   // functions.
-  void ndi_PHSR_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiPHSRHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    char* dp;
+    char* writePointer;
     int j;
 
-    dp = pol->PhsrReply;
-    for (j = 0; j < 1282 && *crp >= ' '; j++)
+    writePointer = pol->PhsrReply;
+    for (j = 0; j < 1282 && *commandReply >= ' '; j++)
     {
-      *dp++ = *crp++;
+      *writePointer++ = *commandReply++;
     }
-    *dp++ = '\0';
+    *writePointer++ = '\0';
   }
 
   //----------------------------------------------------------------------------
@@ -1073,193 +1096,395 @@ namespace
   //
   // This information can be later extracted through one of the ndiGetTXxx()
   // functions.
-  void ndi_TX_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiTXHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    unsigned long mode = 0x0001; // the default reply mode
-    char* dp;
+    unsigned long mode = NDI_XFORMS_AND_STATUS; // the default reply mode
+    char* writePointer;
     int i, j, n;
-    int ph, nhandles, nstray;
+    int handle, handleCount, strayCount;
 
     // if the TX command had a reply mode, read it
-    if ((cp[2] == ':' && cp[7] != '\r') || (cp[2] == ' ' && cp[3] != '\r'))
+    if ((command[2] == ':' && command[7] != '\r') || (command[2] == ' ' && command[3] != '\r'))
     {
-      mode = ndiHexToUnsignedLong(&cp[3], 4);
+      mode = ndiHexToUnsignedLong(&command[3], 4);
     }
 
     // get the number of handles
-    nhandles = (int)ndiHexToUnsignedLong(crp, 2);
-    for (j = 0; j < 2 && *crp >= ' '; j++)
+    handleCount = (int)ndiHexToUnsignedLong(commandReply, 2);
+    for (j = 0; j < 2 && *commandReply >= ' '; j++)
     {
-      crp++;
+      commandReply++;
     }
 
     // go through the information for each handle
-    for (i = 0; i < nhandles; i++)
+    for (i = 0; i < handleCount; i++)
     {
       // get the handle itself (two chars)
-      ph = (int)ndiHexToUnsignedLong(crp, 2);
-      for (j = 0; j < 2 && *crp >= ' '; j++)
+      handle = (int)ndiHexToUnsignedLong(commandReply, 2);
+      for (j = 0; j < 2 && *commandReply >= ' '; j++)
       {
-        crp++;
+        commandReply++;
       }
 
       // check for "UNOCCUPIED"
-      if (*crp == 'U')
+      if (*commandReply == 'U')
       {
-        for (j = 0; j < 10 && *crp >= ' '; j++)
+        for (j = 0; j < 10 && *commandReply >= ' '; j++)
         {
-          crp++;
+          commandReply++;
         }
         // back up and continue (don't store information for unoccupied ports)
         i--;
-        nhandles--;
+        handleCount--;
         continue;
       }
 
       // save the port handle in the list
-      pol->TxHandles[i] = ph;
+      pol->TxHandles[i] = handle;
 
       if (mode & NDI_XFORMS_AND_STATUS)
       {
         // get the transform, MISSING, or DISABLED
-        dp = pol->TxTransforms[i];
+        writePointer = pol->TxTransforms[i];
 
-        if (*crp == 'M')
+        if (*commandReply == 'M')
         {
           // check for "MISSING"
-          for (j = 0; j < 7 && *crp >= ' '; j++)
+          for (j = 0; j < 7 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
-        else if (*crp == 'D')
+        else if (*commandReply == 'D')
         {
           // check for "DISABLED"
-          for (j = 0; j < 8 && *crp >= ' '; j++)
+          for (j = 0; j < 8 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
         else
         {
           // read the transform
-          for (j = 0; j < 51 && *crp >= ' '; j++)
+          for (j = 0; j < 51 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
-        *dp = '\0';
+        *writePointer = '\0';
 
         // get the status
-        dp = pol->TxStatus[i];
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->TxStatus[i];
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
 
         // get the frame number
-        dp = pol->TxFrame[i];
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->TxFrame[i];
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
       }
 
-      // grab additonal information
+      // grab additional information
       if (mode & NDI_ADDITIONAL_INFO)
       {
-        dp = pol->TxInformation[i];
-        for (j = 0; j < 20 && *crp >= ' '; j++)
+        writePointer = pol->TxInformation[i];
+        for (j = 0; j < 20 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
       }
 
       // grab the single marker info
       if (mode & NDI_SINGLE_STRAY)
       {
-        dp = pol->TxSingleStray[i];
-        if (*crp == 'M')
+        writePointer = pol->TxSingleStray[i];
+        if (*commandReply == 'M')
         {
           // check for "MISSING"
-          for (j = 0; j < 7 && *crp >= ' '; j++)
+          for (j = 0; j < 7 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
-        else if (*crp == 'D')
+        else if (*commandReply == 'D')
         {
           // check for "DISABLED"
-          for (j = 0; j < 8 && *crp >= ' '; j++)
+          for (j = 0; j < 8 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
         else
         {
           // read the single stray position
-          for (j = 0; j < 21 && *crp >= ' '; j++)
+          for (j = 0; j < 21 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
         }
-        *dp = '\0';
+        *writePointer = '\0';
       }
 
       // skip over any unsupported information
-      while (*crp >= ' ')
+      while (*commandReply >= ' ')
       {
-        crp++;
+        commandReply++;
       }
 
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
     // save the number of handles (minus the unoccupied handles)
-    pol->TxNhandles = nhandles;
+    pol->TxHandleCount = handleCount;
 
     // get all the passive stray information
     // this will be a maximum of 3 + 13 + 50*3*7 = 1066 bytes
     if (mode & NDI_PASSIVE_STRAY)
     {
       // get the number of strays
-      nstray = (int)ndiSignedToLong(crp, 3);
-      for (j = 0; j < 2 && *crp >= ' '; j++)
+      strayCount = (int)ndiSignedToLong(commandReply, 3);
+      for (j = 0; j < 2 && *commandReply >= ' '; j++)
       {
-        crp++;
+        commandReply++;
       }
-      if (nstray > 50)
+      if (strayCount > 50)
       {
-        nstray = 50;
+        strayCount = 50;
       }
-      pol->TxNpassiveStray = nstray;
+      pol->TxPassiveStrayCount = strayCount;
       // get the out-of-volume bits
-      dp = pol->TxPassiveStrayOov;
-      n = (nstray + 3) / 4;
-      for (j = 0; j < n && *crp >= ' '; j++)
+      writePointer = pol->TxPassiveStrayOov;
+      n = (strayCount + 3) / 4;
+      for (j = 0; j < n && *commandReply >= ' '; j++)
       {
-        *dp++ = *crp++;
+        *writePointer++ = *commandReply++;
       }
       // get the coordinates
-      dp = pol->TxPassiveStray;
-      n = nstray * 21;
-      for (j = 0; j < n && *crp >= ' '; j++)
+      writePointer = pol->TxPassiveStray;
+      n = strayCount * 21;
+      for (j = 0; j < n && *commandReply >= ' '; j++)
       {
-        *dp++ = *crp++;
+        *writePointer++ = *commandReply++;
       }
-      *dp = '\0';
+      *writePointer = '\0';
     }
 
     // get the system status
-    dp = pol->TxSystemStatus;
-    for (j = 0; j < 4 && *crp >= ' '; j++)
+    writePointer = pol->TxSystemStatus;
+    for (j = 0; j < 4 && *commandReply >= ' '; j++)
     {
-      *dp++ = *crp++;
+      *writePointer++ = *commandReply++;
     }
+  }
+
+  //----------------------------------------------------------------------------
+  // Copy all the BX reply information into the ndicapi structure, according
+  // to the BX reply mode that was requested.
+  //
+  // This function is called every time a BX command is sent to the Measurement System.
+  //
+  // This information can be later extracted through one of the ndiGetTXxx()
+  // functions.
+  void ndiBXHelper(ndicapi* api, const char* command, const char* commandReply)
+  {
+    // Reply options
+    // NDI_XFORMS_AND_STATUS  0x0001  /* transforms and status */
+    // NDI_ADDITIONAL_INFO    0x0002  /* additional tool transform info */
+    // NDI_SINGLE_STRAY       0x0004  /* stray active marker reporting */
+    // NDI_FRAME_NUMBER       0x0008  /* frame number for each tool */
+    // NDI_PASSIVE            0x8000  /* report passive tool information */
+    // NDI_PASSIVE_EXTRA      0x2000  /* add 6 extra passive tools */
+    // NDI_PASSIVE_STRAY      0x1000  /* stray passive marker reporting */
+    unsigned long mode = NDI_XFORMS_AND_STATUS;
+    const char* replyIndex;
+    int handle;
+    unsigned short replyLength;
+    unsigned short crc;
+
+    // if the BX command had a reply option, read it
+    if ((command[2] == ':' && command[7] != '\r') || (command[2] == ' ' && command[3] != '\r'))
+    {
+      mode = ndiHexToUnsignedLong(&command[3], 4);
+    }
+
+    replyIndex = &commandReply[0];
+
+    // Confirm start sequence
+    if (*replyIndex != 0xA5 || *(replyIndex + 1) != 0xC4)
+    {
+      // Something isn't right, abort
+      return;
+    }
+    replyIndex += 2;
+
+    // Get the reply length
+    replyLength = *replyIndex << 8 | *(replyIndex + 1);
+    replyIndex += 2;
+
+    // Get the CRC
+    crc = *replyIndex << 8 | *(replyIndex + 1);
+    replyIndex += 2;
+
+    // Get the number of handles
+    api->BxHandleCount = *replyIndex << 8 | *(replyIndex + 1);
+    replyIndex += 2;
+
+    // Go through the information for each handle
+    for (unsigned short i = 0; i < api->BxHandleCount; i++)
+    {
+      // get the handle itself
+      handle = *replyIndex;
+      replyIndex++;
+
+      // save the port handle in the list
+      api->BxHandles[i] = handle;
+
+      char handleStatus = *replyIndex;
+      // Disabled handles have no reply data
+      if (handleStatus == NDI_HANDLE_DISABLED)
+      {
+        api->BxHandlesStatus[i] = handleStatus;
+        replyIndex++;
+        continue;
+      }
+
+      if (mode & NDI_XFORMS_AND_STATUS)
+      {
+        if (handleStatus != NDI_HANDLE_MISSING)
+        {
+          // 4 float, Q0, Qx, Qy, Qz
+          api->BxTransforms[i][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxTransforms[i][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxTransforms[i][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxTransforms[i][3] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+
+          // 3 float, Tx, Ty, Tz
+          api->BxTransforms[i][4] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxTransforms[i][5] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxTransforms[i][6] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+
+          // 1 float, RMS error
+          api->BxTransforms[i][7] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+        }
+        // 4 bytes port status
+        api->BxPortStatus[i] = *replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3);
+        replyIndex += 4;
+        // 4 bytes frame number
+        api->BxFrameNumber[i] = *replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3);
+        replyIndex += 4;
+      }
+
+      // grab additional information
+      if (mode & NDI_ADDITIONAL_INFO)
+      {
+        api->BxToolMarkerInformation[i][0] = *replyIndex;
+        replyIndex++;
+        for (int j = 0; j < 10; j++)
+        {
+          api->BxToolMarkerInformation[i][j + 1] = *replyIndex;
+          replyIndex++;
+        }
+      }
+
+      // grab the single marker info
+      if (mode & NDI_SINGLE_STRAY)
+      {
+        char activeStatus = *replyIndex;
+        replyIndex++;
+        api->BxActiveSingleStrayMarkerStatus[i] = activeStatus;
+
+        if (activeStatus != 0x00 || (mode & NDI_NOT_NORMALLY_REPORTED && activeStatus & NDI_ACTIVE_STRAY_OUT_OF_VOLUME))
+        {
+          // Marker is not missing, or it is out-of-volume and not-normally-requested is requested
+          // Either means we have data...
+          // 3 float, Tx, Ty, Tz
+          api->BxActiveSingleStrayMarkerPosition[i][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxActiveSingleStrayMarkerPosition[i][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->BxActiveSingleStrayMarkerPosition[i][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+        }
+      }
+
+      if (mode & NDI_3D_MARKER_POSITIONS)
+      {
+        // Save marker count
+        api->Bx3DMarkerCount[i] = *replyIndex;
+        replyIndex++;
+
+        // Save off out of volume status
+        int numBytes = static_cast<int>(ceilf(api->Bx3DMarkerCount[i] / 8.f));
+        for (int j = 0; j < numBytes; ++j)
+        {
+          api->Bx3DMarkerOutOfVolume[i][j] = *replyIndex;
+          ++replyIndex;
+        }
+
+        for (int j = 0; j < api->Bx3DMarkerCount[i]; ++j)
+        {
+          // 3 float, Tx, Ty, Tz
+          api->Bx3DMarkerPosition[i][j][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->Bx3DMarkerPosition[i][j][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+          api->Bx3DMarkerPosition[i][j][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          replyIndex += 4;
+        }
+      }
+    }
+
+    if (mode & NDI_PASSIVE_STRAY)
+    {
+      // Save marker count
+      api->BxPassiveStrayCount = *replyIndex;
+      replyIndex++;
+
+      if (api->BxPassiveStrayCount > 240)
+      {
+        // This implementation cannot report on more than 240 stray passive markers
+        api->BxPassiveStrayCount = 240;
+      }
+
+      // Save off out of volume status
+      int numBytes = static_cast<int>(ceilf(api->BxPassiveStrayCount / 8.f));
+      for (int j = 0; j < numBytes; ++j)
+      {
+        api->BxPassiveStrayOutOfVolume[j] = *replyIndex;
+        ++replyIndex;
+      }
+
+      for (int j = 0; j < api->BxPassiveStrayCount; ++j)
+      {
+        // 3 float, Tx, Ty, Tz
+        api->BxPassiveStrayPosition[j][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        replyIndex += 4;
+        api->BxPassiveStrayPosition[j][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        replyIndex += 4;
+        api->BxPassiveStrayPosition[j][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        replyIndex += 4;
+      }
+    }
+
+    // Get the system status
+    api->BxSystemStatus = *replyIndex << 8 | *(replyIndex + 1);
+    replyIndex += 2;
   }
 
   //----------------------------------------------------------------------------
@@ -1271,92 +1496,88 @@ namespace
   //
   // This information can be later extracted through one of the ndiGetGXxx()
   // functions.
-  void ndi_GX_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiGXHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    unsigned long mode = 0x0001; // the default reply mode
-    char* dp;
+    unsigned long mode = NDI_XFORMS_AND_STATUS; // the default reply mode
+    char* writePointer;
     int i, j, k;
-    int npassive, nactive;
+    int passiveCount, activeCount;
 
     // if the GX command had a reply mode, read it
-    if ((cp[2] == ':' && cp[7] != '\r') || (cp[2] == ' ' && cp[3] != '\r'))
+    if ((command[2] == ':' && command[7] != '\r') || (command[2] == ' ' && command[3] != '\r'))
     {
-      mode = ndiHexToUnsignedLong(&cp[3], 4);
+      mode = ndiHexToUnsignedLong(&command[3], 4);
     }
 
     // always three active ports
-    nactive = 3;
+    activeCount = 3;
 
     if (mode & NDI_XFORMS_AND_STATUS)
     {
-      for (k = 0; k < nactive; k += 3)
+      for (k = 0; k < activeCount; k += 3)
       {
         // grab the three transforms
         for (i = 0; i < 3; i++)
         {
-          dp = pol->GxTransforms[i];
-          for (j = 0; j < 51 && *crp >= ' '; j++)
+          writePointer = pol->GxTransforms[i];
+          for (j = 0; j < 51 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
-          *dp = '\0';
-          // fprintf(stderr, "xf %.51s\n", pol->gx_transforms[i]);
+          *writePointer = '\0';
           // eat the trailing newline
-          if (*crp == '\n')
+          if (*commandReply == '\n')
           {
-            crp++;
+            commandReply++;
           }
         }
         // grab the status flags
-        dp = pol->GxStatus + k / 3 * 8;
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->GxStatus + k / 3 * 8;
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "st %.8s\n", pol->gx_status);
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
     if (mode & NDI_ADDITIONAL_INFO)
     {
       // grab information for each port
-      for (i = 0; i < nactive; i++)
+      for (i = 0; i < activeCount; i++)
       {
-        dp = pol->GxInformation[i];
-        for (j = 0; j < 12 && *crp >= ' '; j++)
+        writePointer = pol->GxInformation[i];
+        for (j = 0; j < 12 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "ai %.12s\n", pol->gx_information[i]);
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
     if (mode & NDI_SINGLE_STRAY)
     {
       // grab stray marker for each port
-      for (i = 0; i < nactive; i++)
+      for (i = 0; i < activeCount; i++)
       {
-        dp = pol->GxSingleStray[i];
-        for (j = 0; j < 21 && *crp >= ' '; j++)
+        writePointer = pol->GxSingleStray[i];
+        for (j = 0; j < 21 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        *dp = '\0';
-        // fprintf(stderr, "ss %.21s\n", pol->gx_single_stray[i]);
+        *writePointer = '\0';
         // eat the trailing newline
-        if (*crp == '\n')
+        if (*commandReply == '\n')
         {
-          crp++;
+          commandReply++;
         }
       }
     }
@@ -1364,19 +1585,18 @@ namespace
     if (mode & NDI_FRAME_NUMBER)
     {
       // get frame number for each port
-      for (i = 0; i < nactive; i++)
+      for (i = 0; i < activeCount; i++)
       {
-        dp = pol->GxFrame[i];
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->GxFrame[i];
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "fn %.8s\n", pol->gx_frame[i]);
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
@@ -1387,92 +1607,88 @@ namespace
     }
 
     // in case there are 9 passive tools instead of just 3
-    npassive = 3;
+    passiveCount = 3;
     if (mode & NDI_PASSIVE_EXTRA)
     {
-      npassive = 9;
+      passiveCount = 9;
     }
 
     if ((mode & NDI_XFORMS_AND_STATUS) || (mode == NDI_PASSIVE))
     {
       // the information is grouped in threes
-      for (k = 0; k < npassive; k += 3)
+      for (k = 0; k < passiveCount; k += 3)
       {
         // grab the three transforms
         for (i = 0; i < 3; i++)
         {
-          dp = pol->GxPassiveTransforms[k + i];
-          for (j = 0; j < 51 && *crp >= ' '; j++)
+          writePointer = pol->GxPassiveTransforms[k + i];
+          for (j = 0; j < 51 && *commandReply >= ' '; j++)
           {
-            *dp++ = *crp++;
+            *writePointer++ = *commandReply++;
           }
-          *dp = '\0';
-          // fprintf(stderr, "pxf %.31s\n", pol->gx_passive_transforms[k+i]);
+          *writePointer = '\0';
           // eat the trailing newline
-          if (*crp == '\n')
+          if (*commandReply == '\n')
           {
-            crp++;
+            commandReply++;
           }
         }
         // grab the status flags
-        dp = pol->GxPassiveStatus + k / 3 * 8;
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->GxPassiveStatus + k / 3 * 8;
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pst %.8s\n", pol->gx_passive_status + k/3*8);
         // skip the newline
-        if (*crp == '\n')
+        if (*commandReply == '\n')
         {
-          crp++;
+          commandReply++;
         }
         else   // no newline: no more passive transforms
         {
-          npassive = k + 3;
+          passiveCount = k + 3;
         }
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
     if (mode & NDI_ADDITIONAL_INFO)
     {
       // grab information for each port
-      for (i = 0; i < npassive; i++)
+      for (i = 0; i < passiveCount; i++)
       {
-        dp = pol->GxPassiveInformation[i];
-        for (j = 0; j < 12 && *crp >= ' '; j++)
+        writePointer = pol->GxPassiveInformation[i];
+        for (j = 0; j < 12 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pai %.12s\n", pol->gx_passive_information[i]);
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
     if (mode & NDI_FRAME_NUMBER)
     {
       // get frame number for each port
-      for (i = 0; i < npassive; i++)
+      for (i = 0; i < passiveCount; i++)
       {
-        dp = pol->GxPassiveFrame[i];
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->GxPassiveFrame[i];
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pfn %.8s\n", pol->gx_passive_frame[i]);
       }
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
@@ -1480,111 +1696,104 @@ namespace
     {
       // get all the passive stray information
       // this will be a maximum of 3 + 20*3*7 = 423 bytes
-      dp = pol->GxPassiveStray;
-      for (j = 0; j < 423 && *crp >= ' '; j++)
+      writePointer = pol->GxPassiveStray;
+      for (j = 0; j < 423 && *commandReply >= ' '; j++)
       {
-        *dp++ = *crp++;
+        *writePointer++ = *commandReply++;
       }
-      // fprintf(stderr, "psm %s\n", pol->gx_passive_stray);
     }
   }
 
   //----------------------------------------------------------------------------
   // Copy all the PSTAT reply information into the ndicapi structure.
-  void ndi_PSTAT_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiPSTATHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    unsigned long mode = 0x0001; // the default reply mode
-    char* dp;
+    unsigned long mode = NDI_XFORMS_AND_STATUS; // the default reply mode
+    char* writePointer;
     int i, j;
-    int npassive, nactive;
+    int passiveCount, activeCount;
 
     // if the PSTAT command had a reply mode, read it
-    if ((cp[5] == ':' && cp[10] != '\r') || (cp[5] == ' ' && cp[6] != '\r'))
+    if ((command[5] == ':' && command[10] != '\r') || (command[5] == ' ' && command[6] != '\r'))
     {
-      mode = ndiHexToUnsignedLong(&cp[6], 4);
+      mode = ndiHexToUnsignedLong(&command[6], 4);
     }
 
     // always three active ports
-    nactive = 3;
+    activeCount = 3;
 
     // information for each port is separated by a newline
-    for (i = 0; i < nactive; i++)
+    for (i = 0; i < activeCount; i++)
     {
-
       // basic tool information and port status
       if (mode & NDI_BASIC)
       {
-        dp = pol->PstatBasic[i];
-        for (j = 0; j < 32 && *crp >= ' '; j++)
+        writePointer = pol->PstatBasic[i];
+        for (j = 0; j < 32 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
         // terminate if UNOCCUPIED
         if (j < 32)
         {
-          *dp = '\0';
+          *writePointer = '\0';
         }
-        // fprintf(stderr, "ba %.32s\n", pol->pstat_basic[i]);
       }
 
       // current testing
       if (mode & NDI_TESTING)
       {
-        dp = pol->PstatTesting[i];
-        *dp = '\0';
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->PstatTesting[i];
+        *writePointer = '\0';
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "ai %.8s\n", pol->pstat_testing[i]);
       }
 
       // part number
       if (mode & NDI_PART_NUMBER)
       {
-        dp = pol->PstatPartNumber[i];
-        *dp = '\0';
-        for (j = 0; j < 20 && *crp >= ' '; j++)
+        writePointer = pol->PstatPartNumber[i];
+        *writePointer = '\0';
+        for (j = 0; j < 20 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pn %.20s\n", pol->pstat_part_number[i]);
       }
 
       // accessories
       if (mode & NDI_ACCESSORIES)
       {
-        dp = pol->PstatAccessories[i];
-        *dp = '\0';
-        for (j = 0; j < 2 && *crp >= ' '; j++)
+        writePointer = pol->PstatAccessories[i];
+        *writePointer = '\0';
+        for (j = 0; j < 2 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "ac %.2s\n", pol->pstat_accessories[i]);
       }
 
       // marker type
       if (mode & NDI_MARKER_TYPE)
       {
-        dp = pol->PstatMarkerType[i];
-        *dp = '\0';
-        for (j = 0; j < 2 && *crp >= ' '; j++)
+        writePointer = pol->PstatMarkerType[i];
+        *writePointer = '\0';
+        for (j = 0; j < 2 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "mt %.2s\n", pol->pstat_marker_type[i]);
       }
 
       // skip any other information that might be present
-      while (*crp >= ' ')
+      while (*commandReply >= ' ')
       {
-        crp++;
+        commandReply++;
       }
 
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
 
@@ -1595,188 +1804,181 @@ namespace
     }
 
     // in case there are 9 passive tools instead of just 3
-    npassive = 3;
+    passiveCount = 3;
     if (mode & NDI_PASSIVE_EXTRA)
     {
-      npassive = 9;
+      passiveCount = 9;
     }
 
     // information for each port is separated by a newline
-    for (i = 0; i < npassive; i++)
+    for (i = 0; i < passiveCount; i++)
     {
-
       // basic tool information and port status
       if (mode & NDI_BASIC)
       {
-        dp = pol->PstatPassiveBasic[i];
-        *dp = '\0';
-        for (j = 0; j < 32 && *crp >= ' '; j++)
+        writePointer = pol->PstatPassiveBasic[i];
+        *writePointer = '\0';
+        for (j = 0; j < 32 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
         // terminate if UNOCCUPIED
         if (j < 32)
         {
-          *dp = '\0';
+          *writePointer = '\0';
         }
-        // fprintf(stderr, "pba %.32s\n", pol->pstat_passive_basic[i]);
       }
 
       // current testing
       if (mode & NDI_TESTING)
       {
-        dp = pol->PstatPassiveTesting[i];
-        *dp = '\0';
-        for (j = 0; j < 8 && *crp >= ' '; j++)
+        writePointer = pol->PstatPassiveTesting[i];
+        *writePointer = '\0';
+        for (j = 0; j < 8 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pai %.8s\n", pol->pstat_passive_testing[i]);
       }
 
       // part number
       if (mode & NDI_PART_NUMBER)
       {
-        dp = pol->PstatPassivePartNumber[i];
-        *dp = '\0';
-        for (j = 0; j < 20 && *crp >= ' '; j++)
+        writePointer = pol->PstatPassivePartNumber[i];
+        *writePointer = '\0';
+        for (j = 0; j < 20 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "ppn %.20s\n", pol->pstat_passive_part_number[i]);
       }
 
       // accessories
       if (mode & NDI_ACCESSORIES)
       {
-        dp = pol->PstatPassiveAccessories[i];
-        *dp = '\0';
-        for (j = 0; j < 2 && *crp >= ' '; j++)
+        writePointer = pol->PstatPassiveAccessories[i];
+        *writePointer = '\0';
+        for (j = 0; j < 2 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pac %.2s\n", pol->pstat_passive_accessories[i]);
       }
 
       // marker type
       if (mode & NDI_MARKER_TYPE)
       {
-        dp = pol->PstatPassiveMarkerType[i];
-        *dp = '\0';
-        for (j = 0; j < 2 && *crp >= ' '; j++)
+        writePointer = pol->PstatPassiveMarkerType[i];
+        *writePointer = '\0';
+        for (j = 0; j < 2 && *commandReply >= ' '; j++)
         {
-          *dp++ = *crp++;
+          *writePointer++ = *commandReply++;
         }
-        // fprintf(stderr, "pmt %.2s\n", pol->pstat_passive_marker_type[i]);
       }
 
       // skip any other information that might be present
-      while (*crp >= ' ')
+      while (*commandReply >= ' ')
       {
-        crp++;
+        commandReply++;
       }
 
       // eat the trailing newline
-      if (*crp == '\n')
+      if (*commandReply == '\n')
       {
-        crp++;
+        commandReply++;
       }
     }
   }
 
   //----------------------------------------------------------------------------
   // Copy all the SSTAT reply information into the ndicapi structure.
-  void ndi_SSTAT_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiSSTATHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
     unsigned long mode;
-    char* dp;
+    char* writePointer;
 
     // read the SSTAT command reply mode
-    mode = ndiHexToUnsignedLong(&cp[6], 4);
+    mode = ndiHexToUnsignedLong(&command[6], 4);
 
     if (mode & NDI_CONTROL)
     {
-      dp = pol->SstatControl;
-      *dp++ = *crp++;
-      *dp++ = *crp++;
+      writePointer = pol->SstatControl;
+      *writePointer++ = *commandReply++;
+      *writePointer++ = *commandReply++;
     }
 
     if (mode & NDI_SENSORS)
     {
-      dp = pol->SstatSensor;
-      *dp++ = *crp++;
-      *dp++ = *crp++;
+      writePointer = pol->SstatSensor;
+      *writePointer++ = *commandReply++;
+      *writePointer++ = *commandReply++;
     }
 
     if (mode & NDI_TIU)
     {
-      dp = pol->SstatTiu;
-      *dp++ = *crp++;
-      *dp++ = *crp++;
+      writePointer = pol->SstatTiu;
+      *writePointer++ = *commandReply++;
+      *writePointer++ = *commandReply++;
     }
-
   }
 
   //----------------------------------------------------------------------------
   // Copy all the IRCHK reply information into the ndicapi structure.
-  void ndi_IRCHK_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiIRCHKHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    unsigned long mode = 0x0001; // the default reply mode
+    unsigned long mode = NDI_XFORMS_AND_STATUS; // the default reply mode
     int j;
 
     // if the IRCHK command had a reply mode, read it
-    if ((cp[5] == ':' && cp[10] != '\r') || (cp[5] == ' ' && cp[6] != '\r'))
+    if ((command[5] == ':' && command[10] != '\r') || (command[5] == ' ' && command[6] != '\r'))
     {
-      mode = ndiHexToUnsignedLong(&cp[6], 4);
+      mode = ndiHexToUnsignedLong(&command[6], 4);
     }
 
     // a single character, '0' or '1'
     if (mode & NDI_DETECTED)
     {
-      pol->IrchkDetected = *crp++;
+      pol->IrchkDetected = *commandReply++;
     }
 
     // maximum string length for 20 sources is 2*(3 + 20*3) = 126
     // copy until a control char (less than 0x20) is found
     if (mode & NDI_SOURCES)
     {
-      for (j = 0; j < 126 && *crp >= ' '; j++)
+      for (j = 0; j < 126 && *commandReply >= ' '; j++)
       {
-        pol->IrchkSources[j] = *crp++;
+        pol->IrchkSources[j] = *commandReply++;
       }
     }
   }
 
   //----------------------------------------------------------------------------
   // Adjust the host to match a COMM command.
-  void ndi_COMM_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiCOMMHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
     static int convert_baud[8] = { 9600, 14400, 19200, 38400, 57600, 115200, 921600, 1228739 };
     char newdps[4] = "8N1";
     int newspeed = 9600;
     int newhand = 0;
 
-    if (cp[5] >= '0' && cp[5] <= '7')
+    if (command[5] >= '0' && command[5] <= '7')
     {
-      newspeed = convert_baud[cp[5] - '0'];
+      newspeed = convert_baud[command[5] - '0'];
     }
-    if (cp[6] == '1')
+    if (command[6] == '1')
     {
       newdps[0] = '7';
     }
-    if (cp[7] == '1')
+    if (command[7] == '1')
     {
       newdps[1] = 'O';
     }
-    else if (cp[7] == '2')
+    else if (command[7] == '2')
     {
       newdps[1] = 'E';
     }
-    if (cp[8] == '1')
+    if (command[8] == '1')
     {
       newdps[2] = '2';
     }
-    if (cp[9] == '1')
+    if (command[9] == '1')
     {
       newhand = 1;
     }
@@ -1784,13 +1986,13 @@ namespace
     ndiSerialSleep(pol->SerialDevice, 100);  // let the device adjust itself
     if (ndiSerialComm(pol->SerialDevice, newspeed, newdps, newhand) != 0)
     {
-      ndi_set_error(pol, NDI_BAD_COMM);
+      ndiSetError(pol, NDI_BAD_COMM);
     }
   }
 
   //----------------------------------------------------------------------------
   // Sleep for 100 milliseconds after an INIT command.
-  void ndi_INIT_helper(ndicapi* pol, const char* cp, const char* crp)
+  void ndiINITHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
     ndiSerialSleep(pol->SerialDevice, 100);
   }
@@ -1811,137 +2013,140 @@ ndicapiExport char* ndiCommand(ndicapi* pol, const char* format, ...)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport char* ndiCommandVA(ndicapi* pol, const char* format, va_list ap)
+ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
 {
-  int i, m, nc;
-  unsigned int CRC16 = 0;
-  int use_crc = 0;
-  int in_command = 1;
-  char* cp, *rp, *crp;
+  int i, bytes, commandLength;
+  bool useCrc = false;
+  bool inCommand = true;
+  char* command;
+  char* serialReply;
+  char* commandReply;
 
-  cp = pol->SerialCommand;      // text sent to ndicapi
-  rp = pol->SerialReply;        // text received from ndicapi
-  crp = pol->CommandReply;      // received text, with CRC hacked off
-  nc = 0;                        // length of 'command' part of command
+  command = api->SerialCommand;       // text sent to ndicapi
+  serialReply = api->SerialReply;     // text received from ndicapi
+  commandReply = api->CommandReply;   // received text, with CRC hacked off
+  commandLength = 0;                  // length of 'command' part of command
 
-  pol->ErrorCode = 0;           // clear error
-  cp[0] = '\0';
-  rp[0] = '\0';
-  crp[0] = '\0';
+  api->ErrorCode = 0;                 // clear error
+  command[0] = '\0';
+  serialReply[0] = '\0';
+  commandReply[0] = '\0';
 
   // verify that the serial device was opened
-  if (pol->SerialDevice == NDI_INVALID_HANDLE)
+  if (api->SerialDevice == NDI_INVALID_HANDLE)
   {
-    ndi_set_error(pol, NDI_OPEN_ERROR);
-    return crp;
+    ndiSetError(api, NDI_OPEN_ERROR);
+    return commandReply;
   }
 
   // if the command is NULL, send a break to reset the Measurement System
   if (format == NULL)
   {
-
-    if (pol->IsThreadedMode && pol->IsTracking)
+    if (api->IsThreadedMode && api->IsTracking)
     {
       // block the tracking thread
-      ndiMutexLock(pol->ThreadMutex);
+      ndiMutexLock(api->ThreadMutex);
     }
-    pol->IsTracking = false;
+    api->IsTracking = false;
 
-    ndiSerialComm(pol->SerialDevice, 9600, "8N1", 0);
-    ndiSerialFlush(pol->SerialDevice, NDI_IOFLUSH);
-    ndiSerialBreak(pol->SerialDevice);
-    m = ndiSerialRead(pol->SerialDevice, rp, 2047);
+    ndiSerialComm(api->SerialDevice, 9600, "8N1", 0);
+    ndiSerialFlush(api->SerialDevice, NDI_IOFLUSH);
+    ndiSerialBreak(api->SerialDevice);
+    bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047);
 
     // check for correct reply
-    if (strncmp(rp, "RESETBE6F\r", 8) != 0)
+    if (strncmp(serialReply, "RESETBE6F\r", 8) != 0)
     {
-      ndi_set_error(pol, NDI_RESET_FAIL);
-      return crp;
+      ndiSetError(api, NDI_RESET_FAIL);
+      return commandReply;
     }
 
     // terminate the reply string
-    rp[m] = '\0';
-    m -= 5;
-    strncpy(crp, rp, m);
-    crp[m] = '\0';
+    serialReply[bytes] = '\0';
+    bytes -= 5;
+    strncpy(commandReply, serialReply, bytes);
+    commandReply[bytes] = '\0';
 
     // return the reply string, minus the CRC
-    return crp;
+    return commandReply;
   }
 
-  vsprintf(cp, format, ap);                   // format parameters
+  vsprintf(command, format, ap);                    // format parameters
 
-  CRC16 = 0;                                  // calculate CRC
-  for (i = 0; cp[i] != '\0'; i++)
+  unsigned short CRC16 = 0;                         // calculate CRC
+  for (i = 0; command[i] != '\0'; i++)
   {
-    CalcCRC16(cp[i], &CRC16);
-    if (in_command && cp[i] == ':')           // only use CRC if a ':'
+    CalcCRC16(command[i], &CRC16);
+    if (inCommand && command[i] == ':')             // only use CRC if a ':'
     {
-      use_crc = 1;                            //  follows the command
+      useCrc = true;                                //  follows the command
     }
-    if (in_command &&
-        !((cp[i] >= 'A' && cp[i] <= 'Z') ||
-          (cp[i] >= '0' && cp[i] <= '9')))
+    if (inCommand && !((command[i] >= 'A' && command[i] <= 'Z') ||
+                       (command[i] >= '0' && command[i] <= '9')))
     {
-      in_command = 0;                         // 'command' part has ended
-      nc = i;                                 // command length
+      inCommand = false;                            // 'command' part has ended
+      commandLength = i;                            // command length
     }
   }
 
-  if (use_crc)
+  if (useCrc)
   {
-    sprintf(&cp[i], "%04X", CRC16);           // tack on the CRC
+    sprintf(&command[i], "%04X", CRC16);            // tack on the CRC
     i += 4;
   }
 
-  cp[i] = '\0';
+  command[i++] = '\r';                              // tack on carriage return
+  command[i] = '\0';                                // terminate for good luck
 
-  cp[i++] = '\r';                             // tack on carriage return
-  cp[i] = '\0';                               // terminate for good luck
+  bool isBinary = (strncmp(command, "BX", commandLength) == 0 || strncmp(command, "GETLOG", commandLength) == 0 || strncmp(command, "VGET", commandLength) == 0);
 
-  // if the command is GX and thread_mode is on, we copy the reply from
+
+  // if the command is GX, TX, or BX and thread_mode is on, we copy the reply from
   //  the thread rather than getting it directly from the Measurement System
-  if (pol->IsThreadedMode && pol->IsTracking &&
-      nc == 2 && (cp[0] == 'G' && cp[1] == 'X' ||
-                  cp[0] == 'T' && cp[1] == 'X' ||
-                  cp[0] == 'B' && cp[1] == 'X'))
+  if (api->IsThreadedMode && api->IsTracking &&
+      commandLength == 2 && (command[0] == 'G' && command[1] == 'X' ||
+                             command[0] == 'T' && command[1] == 'X' ||
+                             command[0] == 'B' && command[1] == 'X'))
   {
     int errcode = 0;
 
     // check that the thread is sending the GX command that we want
-    if (strcmp(cp, pol->ThreadCommand) != 0)
+    if (strcmp(command, api->ThreadCommand) != 0)
     {
       // tell thread to start using the new GX command
-      ndiMutexLock(pol->ThreadMutex);
-      strcpy(pol->ThreadCommand, cp);
-      ndiMutexUnlock(pol->ThreadMutex);
+      ndiMutexLock(api->ThreadMutex);
+      strcpy(api->ThreadCommand, command);
+      ndiMutexUnlock(api->ThreadMutex);
       // wait for the next data record to arrive (we have to throw it away)
-      if (ndiEventWait(pol->ThreadBufferEvent, 5000))
+      if (ndiEventWait(api->ThreadBufferEvent, 5000))
       {
-        ndi_set_error(pol, NDI_TIMEOUT);
-        return crp;
+        ndiSetError(api, NDI_TIMEOUT);
+        return commandReply;
       }
     }
     // there is usually no wait, because usually new data is ready
-    if (ndiEventWait(pol->ThreadBufferEvent, 5000))
+    if (ndiEventWait(api->ThreadBufferEvent, 5000))
     {
-      ndi_set_error(pol, NDI_TIMEOUT);
-      return crp;
+      ndiSetError(api, NDI_TIMEOUT);
+      return commandReply;
     }
     // copy the thread's reply buffer into the main reply buffer
-    ndiMutexLock(pol->ThreadBufferMutex);
-    for (m = 0; pol->ThreadBuffer[m] != '\0'; m++)
+    ndiMutexLock(api->ThreadBufferMutex);
+    for (bytes = 0; api->ThreadBuffer[bytes] != '\0'; bytes++)
     {
-      rp[m] = pol->ThreadBuffer[m];
+      serialReply[bytes] = api->ThreadBuffer[bytes];
     }
-    rp[m] = '\0';   // terminate string
-    errcode = pol->ThreadErrorCode;
-    ndiMutexUnlock(pol->ThreadBufferMutex);
+    if (!isBinary)
+    {
+      serialReply[bytes] = '\0';   // terminate string
+    }
+    errcode = api->ThreadErrorCode;
+    ndiMutexUnlock(api->ThreadBufferMutex);
 
     if (errcode != 0)
     {
-      ndi_set_error(pol, errcode);
-      return crp;
+      ndiSetError(api, errcode);
+      return commandReply;
     }
   }
   // if the command is not a GX or thread_mode is not on, then
@@ -1949,160 +2154,184 @@ ndicapiExport char* ndiCommandVA(ndicapi* pol, const char* format, va_list ap)
   else
   {
     int errcode = 0;
-    bool isThreadMode;
+    bool isThreadMode = api->IsThreadedMode;
 
-    // guard against pol->thread_mode changing while mutex is locked
-    isThreadMode = pol->IsThreadedMode;
-
-    if (isThreadMode && pol->IsTracking)
+    if (isThreadMode && api->IsTracking)
     {
       // block the tracking thread while we slip this command through
-      ndiMutexLock(pol->ThreadMutex);
+      ndiMutexLock(api->ThreadMutex);
     }
 
-    // change  pol->tracking  if either TSTOP or TSTART is sent
-    if ((nc == 5 && strncmp(cp, "TSTOP", nc) == 0) ||
-        (nc == 4 && strncmp(cp, "INIT", nc) == 0))
+    // change pol->tracking if either TSTOP or TSTART is sent
+    if ((commandLength == 5 && strncmp(command, "TSTOP", commandLength) == 0) ||
+        (commandLength == 4 && strncmp(command, "INIT", commandLength) == 0))
     {
-      pol->IsTracking = false;
+      api->IsTracking = false;
     }
-    else if (nc == 6 && strncmp(cp, "TSTART", nc) == 0)
+    else if (commandLength == 6 && strncmp(command, "TSTART", commandLength) == 0)
     {
-      pol->IsTracking = true;
+      api->IsTracking = true;
       if (isThreadMode)
       {
         // this will force the thread to wait until the application sends the first GX command
-        pol->ThreadCommand[0] = '\0';
+        api->ThreadCommand[0] = '\0';
       }
     }
 
     // flush the input buffer, because anything that we haven't read
     //   yet is garbage left over by a previously failed command
-    ndiSerialFlush(pol->SerialDevice, NDI_IFLUSH);
+    ndiSerialFlush(api->SerialDevice, NDI_IFLUSH);
 
     // send the command to the Measurement System
     if (errcode == 0)
     {
-      m = ndiSerialWrite(pol->SerialDevice, cp, i);
-      if (m < 0)
+      bytes = ndiSerialWrite(api->SerialDevice, command, i);
+      if (bytes < 0)
       {
         errcode = NDI_WRITE_ERROR;
       }
-      else if (m < i)
+      else if (bytes < i)
       {
         errcode = NDI_TIMEOUT;
       }
     }
 
     // read the reply from the Measurement System
-    m = 0;
+    bytes = 0;
     if (errcode == 0)
     {
-      m = ndiSerialRead(pol->SerialDevice, rp, 2047);
-      if (m < 0)
+      bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047);
+      if (bytes < 0)
       {
         errcode = NDI_WRITE_ERROR;
-        m = 0;
+        bytes = 0;
       }
-      else if (m == 0)
+      else if (bytes == 0)
       {
         errcode = NDI_TIMEOUT;
       }
-      rp[m] = '\0';   // terminate string
+      if (!isBinary)
+      {
+        serialReply[bytes] = '\0';   // terminate string
+      }
     }
 
-    if (isThreadMode & pol->IsTracking)
+    if (isThreadMode & api->IsTracking)
     {
       // unblock the tracking thread
-      // fprintf(stderr,"unlock\n");
-      ndiMutexUnlock(pol->ThreadMutex);
-      // fprintf(stderr,"unlocked\n");
+      ndiMutexUnlock(api->ThreadMutex);
     }
 
     if (errcode != 0)
     {
-      ndi_set_error(pol, errcode);
-      return crp;
+      ndiSetError(api, errcode);
+      return commandReply;
     }
   }
 
   // back up to before the CRC
-  m -= 5;
-  if (m < 0)
+  if (!isBinary)
   {
-    ndi_set_error(pol, NDI_BAD_CRC);
-    return crp;
+    bytes -= 5; // 4 ASCII chars
+  }
+  else
+  {
+    bytes -= 3; // 2 bytes (unsigned short)
+  }
+  if (bytes < 0)
+  {
+    ndiSetError(api, NDI_BAD_CRC);
+    return commandReply;
   }
 
   // calculate the CRC and copy serial_reply to command_reply
   CRC16 = 0;
-  for (i = 0; i < m; i++)
+  for (i = 0; i < bytes; i++)
   {
-    CalcCRC16(rp[i], &CRC16);
-    crp[i] = rp[i];
+    CalcCRC16(serialReply[i], &CRC16);
+    commandReply[i] = serialReply[i];
   }
 
-  // terminate command_reply before the CRC
-  crp[i] = '\0';
-
-  // read and check the CRC value of the reply
-  if (CRC16 != ndiHexToUnsignedLong(&rp[m], 4))
+  if (!isBinary)
   {
-    ndi_set_error(pol, NDI_BAD_CRC);
-    return crp;
+    // terminate command_reply before the CRC
+    commandReply[i] = '\0';
+  }
+
+  if (!isBinary)
+  {
+    // read and check the CRC value of the reply
+    if (CRC16 != ndiHexToUnsignedLong(&serialReply[bytes], 4))
+    {
+      ndiSetError(api, NDI_BAD_CRC);
+      return commandReply;
+    }
+  }
+  else
+  {
+    unsigned short replyCrc = *(serialReply + 1) << 8 | *serialReply;
+    if (replyCrc != CRC16)
+    {
+      ndiSetError(api, NDI_BAD_CRC);
+      return commandReply;
+    }
   }
 
   // check for error code
-  if (crp[0] == 'E' && strncmp(crp, "ERROR", 5) == 0)
+  if (commandReply[0] == 'E' && strncmp(commandReply, "ERROR", 5) == 0)
   {
-    ndi_set_error(pol, ndiHexToUnsignedLong(&crp[5], 2));
-    return crp;
+    ndiSetError(api, ndiHexToUnsignedLong(&commandReply[5], 2));
+    return commandReply;
   }
 
   // special behavior for specific commands
-  if (cp[0] == 'T' && cp[1] == 'X' && nc == 2)   // the TX command
+  if (command[0] == 'T' && command[1] == 'X' && commandLength == 2)   // the TX command
   {
-    ndi_TX_helper(pol, cp, crp);
+    ndiTXHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'G' && cp[1] == 'X' && nc == 2)   // the GX command
+  else if (command[0] == 'B' && command[1] == 'X' && commandLength == 2)   // the BX command
   {
-    ndi_GX_helper(pol, cp, crp);
+    ndiBXHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'C' && nc == 4 && strncmp(cp, "COMM", nc) == 0)
+  else if (command[0] == 'G' && command[1] == 'X' && commandLength == 2)   // the GX command
   {
-    ndi_COMM_helper(pol, cp, crp);
+    ndiGXHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'I' && nc == 4 && strncmp(cp, "INIT", nc) == 0)
+  else if (command[0] == 'C' && commandLength == 4 && strncmp(command, "COMM", commandLength) == 0)
   {
-    ndi_INIT_helper(pol, cp, crp);
+    ndiCOMMHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'I' && nc == 5 && strncmp(cp, "IRCHK", nc) == 0)
+  else if (command[0] == 'I' && commandLength == 4 && strncmp(command, "INIT", commandLength) == 0)
   {
-    ndi_IRCHK_helper(pol, cp, crp);
+    ndiINITHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'P' && nc == 5 && strncmp(cp, "PHINF", nc) == 0)
+  else if (command[0] == 'I' && commandLength == 5 && strncmp(command, "IRCHK", commandLength) == 0)
   {
-    ndi_PHINF_helper(pol, cp, crp);
+    ndiIRCHKHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'P' && nc == 4 && strncmp(cp, "PHRQ", nc) == 0)
+  else if (command[0] == 'P' && commandLength == 5 && strncmp(command, "PHINF", commandLength) == 0)
   {
-    ndi_PHRQ_helper(pol, cp, crp);
+    ndiPHINFHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'P' && nc == 4 && strncmp(cp, "PHSR", nc) == 0)
+  else if (command[0] == 'P' && commandLength == 4 && strncmp(command, "PHRQ", commandLength) == 0)
   {
-    ndi_PHSR_helper(pol, cp, crp);
+    ndiPHRQHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'P' && nc == 5 && strncmp(cp, "PSTAT", nc) == 0)
+  else if (command[0] == 'P' && commandLength == 4 && strncmp(command, "PHSR", commandLength) == 0)
   {
-    ndi_PSTAT_helper(pol, cp, crp);
+    ndiPHSRHelper(api, command, commandReply);
   }
-  else if (cp[0] == 'S' && nc == 5 && strncmp(cp, "SSTAT", nc) == 0)
+  else if (command[0] == 'P' && commandLength == 5 && strncmp(command, "PSTAT", commandLength) == 0)
   {
-    ndi_SSTAT_helper(pol, cp, crp);
+    ndiPSTATHelper(api, command, commandReply);
+  }
+  else if (command[0] == 'S' && commandLength == 5 && strncmp(command, "SSTAT", commandLength) == 0)
+  {
+    ndiSSTATHelper(api, command, commandReply);
   }
 
   // return the Measurement System reply, but with the CRC hacked off
-  return crp;
+  return commandReply;
 }
 
 //----------------------------------------------------------------------------
@@ -2261,15 +2490,15 @@ ndicapiExport int ndiGetPHSRInformation(ndicapi* pol, int i)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiGetTXTransform(ndicapi* pol, int ph, double transform[8])
+ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, double transform[8])
 {
-  char* dp;
+  char* readPointer;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
-    if (pol->TxHandles[i] == ph)
+    if (pol->TxHandles[i] == portHandle)
     {
       break;
     }
@@ -2279,24 +2508,24 @@ ndicapiExport int ndiGetTXTransform(ndicapi* pol, int ph, double transform[8])
     return NDI_DISABLED;
   }
 
-  dp = pol->TxTransforms[i];
-  if (*dp == 'D' || *dp == '\0')
+  readPointer = pol->TxTransforms[i];
+  if (*readPointer == 'D' || *readPointer == '\0')
   {
     return NDI_DISABLED;
   }
-  else if (*dp == 'M')
+  else if (*readPointer == 'M')
   {
     return NDI_MISSING;
   }
 
-  transform[0] = ndiSignedToLong(&dp[0],  6) * 0.0001;
-  transform[1] = ndiSignedToLong(&dp[6],  6) * 0.0001;
-  transform[2] = ndiSignedToLong(&dp[12], 6) * 0.0001;
-  transform[3] = ndiSignedToLong(&dp[18], 6) * 0.0001;
-  transform[4] = ndiSignedToLong(&dp[24], 7) * 0.01;
-  transform[5] = ndiSignedToLong(&dp[31], 7) * 0.01;
-  transform[6] = ndiSignedToLong(&dp[38], 7) * 0.01;
-  transform[7] = ndiSignedToLong(&dp[45], 6) * 0.0001;
+  transform[0] = ndiSignedToLong(&readPointer[0],  6) * 0.0001;
+  transform[1] = ndiSignedToLong(&readPointer[6],  6) * 0.0001;
+  transform[2] = ndiSignedToLong(&readPointer[12], 6) * 0.0001;
+  transform[3] = ndiSignedToLong(&readPointer[18], 6) * 0.0001;
+  transform[4] = ndiSignedToLong(&readPointer[24], 7) * 0.01;
+  transform[5] = ndiSignedToLong(&readPointer[31], 7) * 0.01;
+  transform[6] = ndiSignedToLong(&readPointer[38], 7) * 0.01;
+  transform[7] = ndiSignedToLong(&readPointer[45], 6) * 0.0001;
 
   return NDI_OKAY;
 }
@@ -2307,7 +2536,7 @@ ndicapiExport int ndiGetTXPortStatus(ndicapi* pol, int ph)
   char* dp;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
     if (pol->TxHandles[i] == ph)
@@ -2331,7 +2560,7 @@ ndicapiExport unsigned long ndiGetTXFrame(ndicapi* pol, int ph)
   char* dp;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
     if (pol->TxHandles[i] == ph)
@@ -2355,7 +2584,7 @@ ndicapiExport int ndiGetTXToolInfo(ndicapi* pol, int ph)
   char* dp;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
     if (pol->TxHandles[i] == ph)
@@ -2378,7 +2607,7 @@ ndicapiExport int ndiGetTXMarkerInfo(ndicapi* pol, int ph, int marker)
   char* dp;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
     if (pol->TxHandles[i] == ph)
@@ -2401,7 +2630,7 @@ ndicapiExport int ndiGetTXSingleStray(ndicapi* pol, int ph, double coord[3])
   char* dp;
   int i, n;
 
-  n = pol->TxNhandles;
+  n = pol->TxHandleCount;
   for (i = 0; i < n; i++)
   {
     if (pol->TxHandles[i] == ph)
@@ -2434,7 +2663,7 @@ ndicapiExport int ndiGetTXSingleStray(ndicapi* pol, int ph, double coord[3])
 //----------------------------------------------------------------------------
 ndicapiExport int ndiGetTXNumberOfPassiveStrays(ndicapi* pol)
 {
-  return pol->TxNpassiveStray;
+  return pol->TxPassiveStrayCount;
 }
 
 //----------------------------------------------------------------------------
@@ -2450,7 +2679,7 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3])
     return NDI_DISABLED;
   }
 
-  n = pol->TxNpassiveStray;
+  n = pol->TxPassiveStrayCount;
   dp += 3;
   if (n < 0)
   {
@@ -2727,6 +2956,183 @@ ndicapiExport int ndiGetGXPassiveStray(ndicapi* pol, int i, double coord[3])
   coord[2] = ndiSignedToLong(&dp[14], 7) * 0.01;
 
   return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXTransform(ndicapi* pol, int portHandle, float transform[8])
+{
+  int i, n;
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  memcpy(&transform[0], &pol->BxTransforms[i][0], sizeof(float) * 8);
+  if (pol->BxHandlesStatus[i] & NDI_HANDLE_DISABLED)
+  {
+    return NDI_DISABLED;
+  }
+  else if (pol->BxHandlesStatus[i] & NDI_HANDLE_MISSING)
+  {
+    return NDI_MISSING;
+  }
+
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXPortStatus(ndicapi* pol, int portHandle)
+{
+  int i, n;
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return 0;
+  }
+
+  return pol->BxPortStatus[i];
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport unsigned long ndiGetBXFrame(ndicapi* pol, int portHandle)
+{
+  int i, n;
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return 0;
+  }
+
+  return pol->BxFrameNumber[i];
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXToolInfo(ndicapi* pol, int portHandle, char& outToolInfo)
+{
+  int i, n;
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  outToolInfo = pol->BxToolMarkerInformation[i][0];
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXMarkerInfo(ndicapi* pol, int portHandle, int marker, char& outMarkerInfo)
+{
+  int i, n;
+
+  if (marker >= 20)
+  {
+    return false;
+  }
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  int byteIndex = marker / 2;
+  if (marker % 2 == 0)
+  {
+    // low 4 bits, little endian format, so index backwards from the rear
+    outMarkerInfo = pol->BxToolMarkerInformation[i][1 + (10 - byteIndex)] & 0x00FF;
+  }
+  else
+  {
+    // high 4 bits, little endian format, so index backwards from the rear
+    outMarkerInfo = pol->BxToolMarkerInformation[i][1 + (10 - byteIndex)] & 0xFF00 >> 4;
+  }
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXSingleStray(ndicapi* pol, int portHandle, float outCoord[3])
+{
+  int i, n;
+
+  n = pol->BxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->BxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  memcpy(outCoord, pol->BxActiveSingleStrayMarkerPosition[i], sizeof(float) * 3);
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXNumberOfPassiveStrays(ndicapi* pol)
+{
+  return pol->BxPassiveStrayCount;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXPassiveStray(ndicapi* pol, int i, float outCoord[3])
+{
+  if (i > pol->BxPassiveStrayCount)
+  {
+    return NDI_DISABLED;
+  }
+  memcpy(outCoord, pol->BxPassiveStrayPosition[i], sizeof(float) * 3);
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBXSystemStatus(ndicapi* pol)
+{
+  return pol->BxSystemStatus;
 }
 
 //----------------------------------------------------------------------------

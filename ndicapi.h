@@ -1260,6 +1260,169 @@ ndicapiExport int ndiGetGXNumberOfPassiveStrays(ndicapi* pol);
 ndicapiExport int ndiGetGXPassiveStray(ndicapi* pol, int i, double coord[3]);
 
 /*! \ingroup GetMethods
+Get the transformation for the specified port. The first four numbers are a quaternion,
+the next three numbers are the coordinates in millimeters, and the final number is a
+unitless error estimate.
+
+\param pol       valid NDI device handle
+\param ph        valid port handle in range 0x01 to 0xFF
+\param transform space for the 8 numbers in the transformation
+
+\return one of the following:
+- NDI_OKAY if successful
+- NDI_DISABLED if tool port is nonexistent or disabled
+- NDI_MISSING if tool transform cannot be computed
+
+<p>If NDI_DISABLED or NDI_MISSING is returned, then the values in the supplied transform array will be left unchanged.
+
+The transformations for each of the port handles remain the same until the next BX command is sent to device.
+*/
+ndicapiExport int ndiGetBXTransform(ndicapi* pol, int portHandle, float transform[8]);
+
+/*! \ingroup GetMethods
+Get the 16-bit status value for the specified port handle.
+
+\param pol       valid NDI device handle
+\param ph        valid port handle in range 0x01 to 0xFF
+
+\return status bits or zero if there is no information:
+- NDI_TOOL_IN_PORT        0x0001
+- NDI_SWITCH_1_ON         0x0002
+- NDI_SWITCH_2_ON         0x0004
+- NDI_SWITCH_3_ON         0x0008
+- NDI_INITIALIZED         0x0010
+- NDI_ENABLED             0x0020
+- NDI_OUT_OF_VOLUME       0x0040
+- NDI_PARTIALLY_IN_VOLUME 0x0080
+
+This information is updated each time that the BX command
+is sent to the device.
+*/
+ndicapiExport int ndiGetBXPortStatus(ndicapi* pol, int portHandle);
+
+/*! \ingroup GetMethods
+Get the camera frame number for the latest transform.
+
+\param pol       valid NDI device handle
+\param ph        valid port handle in range 0x01 to 0xFF
+
+\return a 32-bit frame number, or zero if no information was available
+
+This information is updated each time that the BX command
+is sent to the device.
+*/
+ndicapiExport unsigned long ndiGetBXFrame(ndicapi* pol, int portHandle);
+
+/*! \ingroup GetMethods
+Get additional information about the tool transformation.
+
+\param pol          valid NDI device handle
+\param ph           valid port handle in range 0x01 to 0xFF
+\param outToolInfo  parameter to hold tool information
+
+\return the return value will be one of
+- NDI_OKAY - values returned in coord
+- NDI_DISABLED - port disabled or illegal port specified
+- NDI_MISSING - stray marker is not visible to the device
+
+<p>The tool information is only updated when the BX command is called with
+the NDI_ADDITIONAL_INFO (0x0002) mode bit.
+*/
+ndicapiExport int ndiGetBXToolInfo(ndicapi* pol, int portHandle, char& outToolInfo);
+
+/*! \ingroup GetMethods
+Get additional information about the tool markers.
+
+\param pol            valid NDI device handle
+\param ph             valid port handle in range 0x01 to 0xFF
+\param marker         one of 'A' through 'T' for the 20 markers
+\param outMarkerInfo status bits, or zero if there is no information available
+- NDI_MARKER_MISSING             0
+- NDI_MARKER_EXCEEDED_MAX_ANGLE  1
+- NDI_MARKER_EXCEEDED_MAX_ERROR  2
+- NDI_MARKER_USED                3
+
+\return the return value will be one of
+- NDI_OKAY - values returned in coord
+- NDI_DISABLED - port disabled or illegal port specified
+- NDI_MISSING - stray marker is not visible to the device
+
+<p>The tool marker information is only updated when the BX command is
+called with the NDI_ADDITIONAL_INFO (0x0002) mode bit set.
+*/
+ndicapiExport int ndiGetBXMarkerInfo(ndicapi* pol, int portHandle, int marker, char& outMarkerInfo);
+
+/*! \ingroup GetMethods
+Get the coordinates of a stray marker on a wired POLARIS tool.
+This command is only meaningful for tools that have a stray
+marker.
+
+\param pol       valid NDI device handle
+\param ph        valid port handle in range 0x01 to 0xFF
+\param coord     array to hold the three coordinates
+
+\return the return value will be one of
+- NDI_OKAY - values returned in coord
+- NDI_DISABLED - port disabled or illegal port specified
+- NDI_MISSING - stray marker is not visible to the device
+
+<p>The stray marker position is only updated when the BX command is
+called with the NDI_SINGLE_STRAY (0x0004) bit set.
+*/
+ndicapiExport int ndiGetBXSingleStray(ndicapi* pol, int portHandle, double coord[3]);
+
+/*! \ingroup GetMethods
+Get the number of passive stray markers detected.
+
+\param pol       valid NDI device handle
+\return          a number between 0 and 20
+
+The passive stray marker coordinates are updated when a BX command
+is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
+*/
+ndicapiExport int ndiGetBXNumberOfPassiveStrays(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Copy the coordinates of the specified stray marker into the
+supplied array.
+
+\param pol       valid NDI device handle
+\param i         a number between 0 and 19
+\param coord     array to hold the coordinates
+\return          one of:
+- NDI_OKAY - information was returned in coord
+- NDI_DISABLED - no stray marker reporting is available
+- NDI_MISSING - marker number i is not visible
+
+<p>Use ndiGetTXNumberOfPassiveStrays() to get the number of stray
+markers that are visible.
+
+The passive stray marker coordinates are updated when a BX command
+is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
+*/
+ndicapiExport int ndiGetBXPassiveStray(ndicapi* pol, int i, double coord[3]);
+
+/*! \ingroup GetMethods
+Get an 16-bit status bitfield for the system.
+
+\param pol       valid NDI device handle
+
+\return status bits or zero if there is no information:
+- NDI_COMM_SYNC_ERROR            0x0001
+- NDI_TOO_MUCH_EXTERNAL_INFRARED 0x0002
+- NDI_COMM_CRC_ERROR             0x0004
+- NDI_COMM_RECOVERABLE           0x0008
+- NDI_HARDWARE_FAILURE           0x0010
+- NDI_HARDWARE_CHANGE            0x0020
+- NDI_PORT_OCCUPIED              0x0040
+- NDI_PORT_UNOCCUPIED            0x0080
+
+<p>The system stutus information is updated whenever the BX command is
+called with the NDI_XFORMS_AND_STATUS (0x0001) bit set in the reply mode.
+*/
+ndicapiExport int ndiGetBXSystemStatus(ndicapi* pol);
+
+/*! \ingroup GetMethods
   Get the 8-bit status value for the specified port.
 
   \param pol       valid NDI device handle
@@ -1675,12 +1838,26 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define  NDI_PASSIVE_STRAY      0x1000  /* stray passive marker reporting */
 /*\}*/
 
+/* ndiBX() reply mode bit definitions */
+/*\{*/
+#define  NDI_3D_MARKER_POSITIONS        0x0008  /* 3d positions of markers on tools */
+#define  NDI_NOT_NORMALLY_REPORTED      0x0800  /* report all transformations */
+#define  NDI_ACTIVE_STRAY_VALID         0x01
+#define  NDI_ACTIVE_STRAY_MISSING       0x02
+#define  NDI_ACTIVE_STRAY_OUT_OF_VOLUME 0x08
+/*\}*/
+
 /* return values that give the reason behind missing data */
 /*\{*/
 #define NDI_DISABLED        1
 #define NDI_MISSING         2
 #define NDI_UNOCCUPIED      3
 /*\}*/
+
+/* return values for handle status */
+#define NDI_HANDLE_VALID 0x01
+#define NDI_HANDLE_MISSING 0x02
+#define NDI_HANDLE_DISABLED 0x04
 
 /* ndiGetTXPortStatus() and ndiGetPSTATPortStatus() return value bits */
 /*\{*/
