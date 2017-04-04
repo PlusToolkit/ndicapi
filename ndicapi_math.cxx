@@ -106,9 +106,9 @@ ndicapiExport void ndiRelativeTransform(const double a[8], const double b[8], do
 // even though OpenGL follows the left-multiplication convention,
 // because OpenGL uses a column-major storage model so references
 // to the matrix are automagically transposed.
-ndicapiExport void ndiTransformToMatrixf(const double trans[8], float matrix[16])
+ndicapiExport void ndiTransformToMatrixf(const float trans[8], float matrix[16])
 {
-  double ww, xx, yy, zz, wx, wy, wz, xy, xz, yz, ss, rr, f;
+  float ww, xx, yy, zz, wx, wy, wz, xy, xz, yz, ss, rr, f;
 
   /* Determine some calculations done more than once. */
   ww = trans[0] * trans[0];
@@ -128,26 +128,26 @@ ndicapiExport void ndiTransformToMatrixf(const double trans[8], float matrix[16]
   f = 2.0f / (ww + rr);
 
   /* Fill in the matrix. */
-  matrix[0]  = (float)((ss + xx) * f);
-  matrix[1]  = (float)((wz + xy) * f);
-  matrix[2]  = (float)((-wy + xz) * f);
+  matrix[0] = (ss + xx) * f;
+  matrix[1] = (wz + xy) * f;
+  matrix[2] = (-wy + xz) * f;
   matrix[3]  = 0;
-  matrix[4]  = (float)((-wz + xy) * f);
-  matrix[5]  = (float)((ss + yy) * f);
-  matrix[6]  = (float)((wx + yz) * f);
+  matrix[4] = (-wz + xy) * f;
+  matrix[5] = (ss + yy) * f;
+  matrix[6] = (wx + yz) * f;
   matrix[7]  = 0;
-  matrix[8]  = (float)((wy + xz) * f);
-  matrix[9]  = (float)((-wx + yz) * f);
-  matrix[10] = (float)((ss + zz) * f);
+  matrix[8] = (wy + xz) * f;
+  matrix[9] = (-wx + yz) * f;
+  matrix[10] = (ss + zz) * f;
   matrix[11] = 0;
-  matrix[12] = (float)(trans[4]);
-  matrix[13] = (float)(trans[5]);
-  matrix[14] = (float)(trans[6]);
+  matrix[12] = trans[4];
+  matrix[13] = trans[5];
+  matrix[14] = trans[6];
   matrix[15] = 1;
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16])
+ndicapiExport void ndiTransformToMatrixd(const float trans[8], double matrix[16])
 {
   double ww, xx, yy, zz, wx, wy, wz, xy, xz, yz, ss, rr, f;
 
@@ -179,6 +179,47 @@ ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16
   matrix[7]  = 0;
   matrix[8]  = (wy + xz) * f;
   matrix[9]  = (-wx + yz) * f;
+  matrix[10] = (ss + zz) * f;
+  matrix[11] = 0;
+  matrix[12] = trans[4];
+  matrix[13] = trans[5];
+  matrix[14] = trans[6];
+  matrix[15] = 1;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16])
+{
+  double ww, xx, yy, zz, wx, wy, wz, xy, xz, yz, ss, rr, f;
+
+  /* Determine some calculations done more than once. */
+  ww = trans[0] * trans[0];
+  xx = trans[1] * trans[1];
+  yy = trans[2] * trans[2];
+  zz = trans[3] * trans[3];
+  wx = trans[0] * trans[1];
+  wy = trans[0] * trans[2];
+  wz = trans[0] * trans[3];
+  xy = trans[1] * trans[2];
+  xz = trans[1] * trans[3];
+  yz = trans[2] * trans[3];
+
+  rr = xx + yy + zz;
+  ss = (ww - rr) * 0.5;
+  /* Normalization factor */
+  f = 2.0 / (ww + rr);
+
+  /* Fill in the matrix. */
+  matrix[0] = (ss + xx) * f;
+  matrix[1] = (wz + xy) * f;
+  matrix[2] = (-wy + xz) * f;
+  matrix[3] = 0;
+  matrix[4] = (-wz + xy) * f;
+  matrix[5] = (ss + yy) * f;
+  matrix[6] = (wx + yz) * f;
+  matrix[7] = 0;
+  matrix[8] = (wy + xz) * f;
+  matrix[9] = (-wx + yz) * f;
   matrix[10] = (ss + zz) * f;
   matrix[11] = 0;
   matrix[12] = trans[4];

@@ -75,9 +75,13 @@ ndicapiExport void ndiRelativeTransform(const double a[8], const double b[8], do
 /*! \ingroup NdicapiMath
   Convert a quaternion transformation into a 4x4 float matrix.
 */
-ndicapiExport void ndiTransformToMatrixf(const double trans[8], float matrix[16]);
+ndicapiExport void ndiTransformToMatrixf(const float trans[8], float matrix[16]);
 /*! \ingroup NdicapiMath
   Convert a quaternion transformation into a 4x4 double matrix.
+*/
+ndicapiExport void ndiTransformToMatrixd(const float trans[8], double matrix[16]);
+/*! \ingroup NdicapiMath
+Convert a quaternion transformation into a 4x4 double matrix.
 */
 ndicapiExport void ndiTransformToMatrixd(const double trans[8], double matrix[16]);
 

@@ -945,7 +945,8 @@ ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi* pol);
   The transformations for each of the port handles remain the same
   until the next TX command is sent to device.
 */
-ndicapiExport int ndiGetTXTransform(ndicapi* pol, int ph, double transform[8]);
+ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, float transform[8]);
+ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, double transform[8]);
 
 /*! \ingroup GetMethods
   Get the 16-bit status value for the specified port handle.

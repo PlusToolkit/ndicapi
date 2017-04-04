@@ -2490,6 +2490,47 @@ ndicapiExport int ndiGetPHSRInformation(ndicapi* pol, int i)
 }
 
 //----------------------------------------------------------------------------
+ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, float transform[8])
+{
+  char* readPointer;
+  int i, n;
+
+  n = pol->TxHandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->TxHandles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  readPointer = pol->TxTransforms[i];
+  if (*readPointer == 'D' || *readPointer == '\0')
+  {
+    return NDI_DISABLED;
+  }
+  else if (*readPointer == 'M')
+  {
+    return NDI_MISSING;
+  }
+
+  transform[0] = ndiSignedToLong(&readPointer[0],  6) * 0.0001f;
+  transform[1] = ndiSignedToLong(&readPointer[6],  6) * 0.0001f;
+  transform[2] = ndiSignedToLong(&readPointer[12], 6) * 0.0001f;
+  transform[3] = ndiSignedToLong(&readPointer[18], 6) * 0.0001f;
+  transform[4] = ndiSignedToLong(&readPointer[24], 7) * 0.01f;
+  transform[5] = ndiSignedToLong(&readPointer[31], 7) * 0.01f;
+  transform[6] = ndiSignedToLong(&readPointer[38], 7) * 0.01f;
+  transform[7] = ndiSignedToLong(&readPointer[45], 6) * 0.0001f;
+
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
 ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, double transform[8])
 {
   char* readPointer;
@@ -2518,8 +2559,8 @@ ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, double transfo
     return NDI_MISSING;
   }
 
-  transform[0] = ndiSignedToLong(&readPointer[0],  6) * 0.0001;
-  transform[1] = ndiSignedToLong(&readPointer[6],  6) * 0.0001;
+  transform[0] = ndiSignedToLong(&readPointer[0], 6) * 0.0001;
+  transform[1] = ndiSignedToLong(&readPointer[6], 6) * 0.0001;
   transform[2] = ndiSignedToLong(&readPointer[12], 6) * 0.0001;
   transform[3] = ndiSignedToLong(&readPointer[18], 6) * 0.0001;
   transform[4] = ndiSignedToLong(&readPointer[24], 7) * 0.01;
