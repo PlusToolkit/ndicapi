@@ -79,7 +79,7 @@ ndicapiExport void ndiTransformToMatrixf(const float trans[8], float matrix[16])
 /*! \ingroup NdicapiMath
   Convert a quaternion transformation into a 4x4 double matrix.
 */
-ndicapiExport void ndiTransformToMatrixd(const float trans[8], double matrix[16]);
+ndicapiExport void ndiTransformToMatrixfd(const float trans[8], double matrix[16]);
 /*! \ingroup NdicapiMath
 Convert a quaternion transformation into a 4x4 double matrix.
 */
