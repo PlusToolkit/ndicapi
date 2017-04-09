@@ -2490,7 +2490,7 @@ ndicapiExport int ndiGetPHSRInformation(ndicapi* pol, int i)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, float transform[8])
+ndicapiExport int ndiGetTXTransformf(ndicapi* pol, int portHandle, float transform[8])
 {
   char* readPointer;
   int i, n;

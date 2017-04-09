@@ -147,7 +147,7 @@ ndicapiExport void ndiTransformToMatrixf(const float trans[8], float matrix[16])
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport void ndiTransformToMatrixd(const float trans[8], double matrix[16])
+ndicapiExport void ndiTransformToMatrixfd(const float trans[8], double matrix[16])
 {
   double ww, xx, yy, zz, wx, wy, wz, xy, xz, yz, ss, rr, f;
 

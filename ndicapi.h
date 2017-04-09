@@ -945,7 +945,7 @@ ndicapiExport int ndiGetPHINFGPIOStatus(ndicapi* pol);
   The transformations for each of the port handles remain the same
   until the next TX command is sent to device.
 */
-ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, float transform[8]);
+ndicapiExport int ndiGetTXTransformf(ndicapi* pol, int portHandle, float transform[8]);
 ndicapiExport int ndiGetTXTransform(ndicapi* pol, int portHandle, double transform[8]);
 
 /*! \ingroup GetMethods
@@ -1370,7 +1370,7 @@ marker.
 <p>The stray marker position is only updated when the BX command is
 called with the NDI_SINGLE_STRAY (0x0004) bit set.
 */
-ndicapiExport int ndiGetBXSingleStray(ndicapi* pol, int portHandle, double coord[3]);
+ndicapiExport int ndiGetBXSingleStray(ndicapi* pol, int portHandle, float coord[3]);
 
 /*! \ingroup GetMethods
 Get the number of passive stray markers detected.
@@ -1401,7 +1401,7 @@ markers that are visible.
 The passive stray marker coordinates are updated when a BX command
 is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
 */
-ndicapiExport int ndiGetBXPassiveStray(ndicapi* pol, int i, double coord[3]);
+ndicapiExport int ndiGetBXPassiveStray(ndicapi* pol, int i, float coord[3]);
 
 /*! \ingroup GetMethods
 Get an 16-bit status bitfield for the system.
