@@ -16,7 +16,7 @@
 
 #if defined(WIN32) && !defined(ndicapi_STATIC)
  #if defined(ndicapi_EXPORTS)
-  #define ndicapiExport extern "C" __declspec( dllexport )
+  #define ndicapiExport __declspec( dllexport )
  #else
   #define ndicapiExport __declspec( dllimport )
  #endif

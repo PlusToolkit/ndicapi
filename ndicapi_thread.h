@@ -80,6 +80,10 @@ typedef pl_cond_and_mutex_t* NDIEvent;
 
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ndicapiExport NDIMutex ndiMutexCreate();
 ndicapiExport void ndiMutexDestroy(NDIMutex mutex);
 ndicapiExport void ndiMutexLock(NDIMutex mutex);
@@ -92,5 +96,9 @@ ndicapiExport int ndiEventWait(NDIEvent event, int milliseconds);
 
 ndicapiExport NDIThread ndiThreadSplit(void* thread_func(void* userdata), void* userdata);
 ndicapiExport void ndiThreadJoin(NDIThread Thread);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

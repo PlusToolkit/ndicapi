@@ -59,6 +59,10 @@ POSSIBILITY OF SUCH DAMAGES.
   \f]
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*! \ingroup NdicapiMath
   Find the position and orientation of a tool relative to a
   reference tool.  This is done by quaternion division.
@@ -116,5 +120,8 @@ ndicapiExport void ndiCoordsFromMatrixf(float coords[3], const float matrix[16])
 */
 ndicapiExport void ndiCoordsFromMatrixd(double coords[3], const double matrix[16]);
 
-int asdf();
+#ifdef __cplusplus
+}
+#endif
+
 #endif

@@ -59,7 +59,9 @@ typedef struct ndicapi ndicapi;
    Programmers' Interface.
 */
 
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 /*! \ingroup NDIMethods
   This function will return the name of the \em i th serial port device,
   i.e. \em i = 0 gives "COM1:" on Windows and "/dev/ttyS0" on linux.
@@ -2001,5 +2003,9 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define  NDI_LEFT   0            /* left sensor */
 #define  NDI_RIGHT  1            /* right sensor */
 /*\}*/
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
