@@ -329,37 +329,48 @@ ndicapiExport int ndiSerialWrite(int serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(int serial_port, char* reply, int n, bool isBinary)
+ndicapiExport int ndiSerialRead(int serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
 {
-  int i = 0;
-  int m;
+  int totalNumberOfBytesRead = 0;
+  int totalNumberOfBytesToRead = numberOfBytesToRead;
+  int numberOfBytesRead;
+  bool binarySizeCalculated = false;
 
-  while (n > 0)                          /* read reply until <CR> */
+  do
   {
-    if ((m = read(serial_port, &reply[i], n)) == -1)
+    if ((numberOfBytesRead = read(serial_port, &reply[totalNumberOfBytesRead], numberOfBytesToRead)) == -1)
     {
-      if (errno == EAGAIN)        /* canceled, so retry */
+      if (errno == EAGAIN) /* canceled, so retry */
       {
-        m = 0;
+        numberOfBytesRead = 0;
       }
       else
       {
-        return -1;  /* IO error occurred */
+        return -1; /* IO error occurred */
       }
     }
-    else if (m == 0)   /* no characters read, must have timed out */
+    else if (numberOfBytesRead == 0)   /* no characters read, must have timed out */
     {
       return 0;
     }
-    n -= m;  /* n is number of chars left to read */
-    i += m;  /* i is the number of chars read */
-    if (reply[i - 1] == '\r')  /* done when carriage return received */
+
+    totalNumberOfBytesRead += numberOfBytesRead;
+    if (!isBinary && reply[totalNumberOfBytesRead - 1] == '\r'       /* done when carriage return received (ASCII) or when ERROR... received (binary)*/
+        || isBinary && strncmp(reply, "ERROR", 5) == 0 && reply[totalNumberOfBytesRead - 1] == '\r')
     {
       break;
     }
-  }
 
-  return i;
+    if (isBinary && !binarySizeCalculated && reply[0] == (char)0xc4 && reply[1] == (char)0xa5)
+    {
+      // recalculate n based on the reply length (reported from ndi device) and the amount of data received so far
+      unsigned short size = ((unsigned char)reply[2] | (unsigned char)reply[3] << 8) + 8; // 8 bytes -> 2 for Start Sequence (a5c4), 2 for reply length, 2 for header CRC, 2 for CRC16
+      totalNumberOfBytesToRead = size;
+    }
+  }
+  while (totalNumberOfBytesRead != totalNumberOfBytesToRead);
+
+  return totalNumberOfBytesRead;
 }
 
 //----------------------------------------------------------------------------
