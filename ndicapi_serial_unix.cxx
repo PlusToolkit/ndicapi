@@ -406,11 +406,11 @@ ndicapiExport int ndiSerialWrite(int serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
+ndicapiExport int ndiSerialRead(int serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
 {
   int totalNumberOfBytesRead = 0;
   int totalNumberOfBytesToRead = numberOfBytesToRead;
-  DWORD numberOfBytesRead;
+  int numberOfBytesRead;
   bool binarySizeCalculated = false;
 
   do
@@ -448,40 +448,6 @@ ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfByt
   while (totalNumberOfBytesRead != totalNumberOfBytesToRead);
 
   return totalNumberOfBytesRead;
-}
-
-//----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(int serial_port, char* reply, int n, bool isBinary)
-{
-  int i = 0;
-  int m;
-
-  while (n > 0)                          /* read reply until <CR> */
-  {
-    if ((m = read(serial_port, &reply[i], n)) == -1)
-    {
-      if (errno == EAGAIN)        /* canceled, so retry */
-      {
-        m = 0;
-      }
-      else
-      {
-        return -1;  /* IO error occurred */
-      }
-    }
-    else if (m == 0)   /* no characters read, must have timed out */
-    {
-      return 0;
-    }
-    n -= m;  /* n is number of chars left to read */
-    i += m;  /* i is the number of chars read */
-    if (reply[i - 1] == '\r')  /* done when carriage return received */
-    {
-      break;
-    }
-  }
-
-  return i;
 }
 
 //----------------------------------------------------------------------------
