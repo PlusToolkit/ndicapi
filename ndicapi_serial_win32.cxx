@@ -216,7 +216,6 @@ ndicapiExport int ndiSerialComm(HANDLE serial_port, int baud, const char* mode,
 {
   DCB comm_settings;
   int newbaud;
-
   switch (baud)
   {
     case 9600:
@@ -365,37 +364,49 @@ ndicapiExport int ndiSerialWrite(HANDLE serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int n)
+ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
 {
-  int i = 0;
-  DWORD m, dumb;
+  int totalNumberOfBytesRead = 0;
+  int totalNumberOfBytesToRead = numberOfBytesToRead;
+  DWORD numberOfBytesRead;
+  bool binarySizeCalculated = false;
 
-  while (n > 0)
+  do
   {
-    if (ReadFile(serial_port, &reply[i], n, &m, NULL) == FALSE)
+    if (ReadFile(serial_port, &reply[totalNumberOfBytesRead], numberOfBytesToRead, &numberOfBytesRead, NULL) == FALSE)
     {
       if (GetLastError() == ERROR_OPERATION_ABORTED)  /* canceled */
       {
-        ClearCommError(serial_port, &dumb, NULL); /* so clear error and retry */
+        DWORD dummyVariable;
+        ClearCommError(serial_port, &dummyVariable, NULL); /* so clear error and retry */
       }
       else
       {
         return -1;  /* IO error occurred */
       }
     }
-    else if (m == 0)   /* no characters read, must have timed out */
+    else if (numberOfBytesRead == 0)   /* no characters read, must have timed out */
     {
       return 0;
     }
-    n -= m;  /* n is number of chars left to read */
-    i += m;  /* i is the number of chars read */
-    if (reply[i - 1] == '\r')  /* done when carriage return received */
+
+    totalNumberOfBytesRead += numberOfBytesRead;
+    if (!isBinary && reply[totalNumberOfBytesRead - 1] == '\r'       /* done when carriage return received (ASCII) or when ERROR... received (binary)*/
+        || isBinary && strncmp(reply, "ERROR", 5) == 0 && reply[totalNumberOfBytesRead - 1] == '\r')
     {
       break;
     }
-  }
 
-  return i;
+    if (isBinary && !binarySizeCalculated && reply[0] == (char)0xc4 && reply[1] == (char)0xa5)
+    {
+      // recalculate n based on the reply length (reported from ndi device) and the amount of data received so far
+      unsigned short size = ((unsigned char)reply[2] | (unsigned char)reply[3] << 8) + 8; // 8 bytes -> 2 for Start Sequence (a5c4), 2 for reply length, 2 for header CRC, 2 for CRC16
+      totalNumberOfBytesToRead = size;
+    }
+  }
+  while (totalNumberOfBytesRead != totalNumberOfBytesToRead);
+
+  return totalNumberOfBytesRead;
 }
 
 //----------------------------------------------------------------------------

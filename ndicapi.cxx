@@ -80,6 +80,7 @@ struct ndicapi
   char* ThreadCommand;                    // last command sent from thread
   char* ThreadReply;                      // reply from the ndicapi
   char* ThreadBuffer;                     // buffer for previous reply
+  bool IsThreadedCommandBinary;           // cache whether we're sending BX (true) or TX/GX (false)
   int ThreadErrorCode;                    // error code to go with buffer
 
   // command reply -- this is the return value from plCommand()
@@ -158,7 +159,7 @@ struct ndicapi
   char TxPassiveStray[1052];
 
   // BX command reply data
-  unsigned short BxHandleCount;
+  unsigned char BxHandleCount;
   char BxHandles[NDI_MAX_HANDLES];
   char BxHandlesStatus[NDI_MAX_HANDLES];
   unsigned int BxFrameNumber[NDI_MAX_HANDLES];
@@ -636,7 +637,7 @@ ndicapiExport int ndiProbe(const char* device)
 
   // try to initialize ndicapi
   if (ndiSerialWrite(serial_port, "INIT:E3A5\r", 10) < 10 || ndiSerialSleep(serial_port, 100) < 0 ||
-      ndiSerialRead(serial_port, init_reply, 16) <= 0 || strncmp(init_reply, "OKAYA896\r", 9) != 0)
+      ndiSerialRead(serial_port, init_reply, 16, false) <= 0 || strncmp(init_reply, "OKAYA896\r", 9) != 0)
   {
     // increase timeout to 5 seconds for reset
     ndiSerialTimeout(serial_port, 5000);
@@ -650,7 +651,7 @@ ndicapiExport int ndiProbe(const char* device)
       return NDI_BAD_COMM;
     }
 
-    n = ndiSerialRead(serial_port, init_reply, 16);
+    n = ndiSerialRead(serial_port, init_reply, 16, false);
     if (n < 0)
     {
       ndiSerialClose(serial_port);
@@ -683,7 +684,7 @@ ndicapiExport int ndiProbe(const char* device)
     }
 
     ndiSerialSleep(serial_port, 100);
-    n = ndiSerialRead(serial_port, init_reply, 16);
+    n = ndiSerialRead(serial_port, init_reply, 16, false);
     if (n < 0)
     {
       ndiSerialClose(serial_port);
@@ -705,7 +706,7 @@ ndicapiExport int ndiProbe(const char* device)
   // use VER command to verify that this is a NDI device
   ndiSerialSleep(serial_port, 100);
   if (ndiSerialWrite(serial_port, "VER:065EE\r", 10) < 10 ||
-      (n = ndiSerialRead(serial_port, reply, 1023)) < 7)
+      (n = ndiSerialRead(serial_port, reply, 1023, false)) < 7)
   {
     ndiSerialClose(serial_port);
     return NDI_PROBE_FAIL;
@@ -1305,9 +1306,8 @@ namespace
     // NDI_PASSIVE_STRAY      0x1000  /* stray passive marker reporting */
     unsigned long mode = NDI_XFORMS_AND_STATUS;
     const char* replyIndex;
-    int handle;
     unsigned short replyLength;
-    unsigned short crc;
+    unsigned short headerCRC;
 
     // if the BX command had a reply option, read it
     if ((command[2] == ':' && command[7] != '\r') || (command[2] == ' ' && command[3] != '\r'))
@@ -1318,7 +1318,7 @@ namespace
     replyIndex = &commandReply[0];
 
     // Confirm start sequence
-    if (*replyIndex != 0xA5 || *(replyIndex + 1) != 0xC4)
+    if (replyIndex[0] != (char)0xc4 || replyIndex[1] != (char)0xa5)  // little endian
     {
       // Something isn't right, abort
       return;
@@ -1326,78 +1326,75 @@ namespace
     replyIndex += 2;
 
     // Get the reply length
-    replyLength = *replyIndex << 8 | *(replyIndex + 1);
+    replyLength = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
     replyIndex += 2;
 
     // Get the CRC
-    crc = *replyIndex << 8 | *(replyIndex + 1);
+    headerCRC = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
     replyIndex += 2;
 
     // Get the number of handles
-    api->BxHandleCount = *replyIndex << 8 | *(replyIndex + 1);
-    replyIndex += 2;
+    api->BxHandleCount = (unsigned char)replyIndex[0];
+    replyIndex += 1;
 
     // Go through the information for each handle
     for (unsigned short i = 0; i < api->BxHandleCount; i++)
     {
       // get the handle itself
-      handle = *replyIndex;
+      api->BxHandles[i] = (char)replyIndex[0];
       replyIndex++;
 
-      // save the port handle in the list
-      api->BxHandles[i] = handle;
+      api->BxHandlesStatus[i] = (char)replyIndex[0];
+      replyIndex++;
 
-      char handleStatus = *replyIndex;
       // Disabled handles have no reply data
-      if (handleStatus == NDI_HANDLE_DISABLED)
+      if (api->BxHandlesStatus[i] == NDI_HANDLE_DISABLED)
       {
-        api->BxHandlesStatus[i] = handleStatus;
-        replyIndex++;
         continue;
       }
 
       if (mode & NDI_XFORMS_AND_STATUS)
       {
-        if (handleStatus != NDI_HANDLE_MISSING)
+        if (api->BxHandlesStatus[i] != NDI_HANDLE_MISSING)
         {
           // 4 float, Q0, Qx, Qy, Qz
-          api->BxTransforms[i][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][0] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxTransforms[i][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][1] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxTransforms[i][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][2] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxTransforms[i][3] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][3] = *(float*)replyIndex;
           replyIndex += 4;
 
           // 3 float, Tx, Ty, Tz
-          api->BxTransforms[i][4] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][4] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxTransforms[i][5] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][5] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxTransforms[i][6] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][6] = *(float*)replyIndex;
           replyIndex += 4;
 
           // 1 float, RMS error
-          api->BxTransforms[i][7] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxTransforms[i][7] = *(float*)replyIndex;
           replyIndex += 4;
         }
         // 4 bytes port status
-        api->BxPortStatus[i] = *replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3);
+        api->BxPortStatus[i] = (int)replyIndex[0] | (int)replyIndex[1] << 8 | (int)replyIndex[2] << 16 | (int)replyIndex[3] << 24;
         replyIndex += 4;
         // 4 bytes frame number
-        api->BxFrameNumber[i] = *replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3);
+        api->BxFrameNumber[i] = (unsigned int)replyIndex[0] | (unsigned int)replyIndex[1] << 8 | (unsigned int)replyIndex[2] << 16 | (unsigned int)replyIndex[3] << 24;
         replyIndex += 4;
       }
 
       // grab additional information
       if (mode & NDI_ADDITIONAL_INFO)
       {
-        api->BxToolMarkerInformation[i][0] = *replyIndex;
+        api->BxToolMarkerInformation[i][0] = (char)replyIndex[0];
         replyIndex++;
         for (int j = 0; j < 10; j++)
         {
-          api->BxToolMarkerInformation[i][j + 1] = *replyIndex;
+          api->BxToolMarkerInformation[i][j + 1] = (char)replyIndex[0];
           replyIndex++;
         }
       }
@@ -1405,7 +1402,7 @@ namespace
       // grab the single marker info
       if (mode & NDI_SINGLE_STRAY)
       {
-        char activeStatus = *replyIndex;
+        char activeStatus = (char)replyIndex[0];
         replyIndex++;
         api->BxActiveSingleStrayMarkerStatus[i] = activeStatus;
 
@@ -1414,11 +1411,11 @@ namespace
           // Marker is not missing, or it is out-of-volume and not-normally-requested is requested
           // Either means we have data...
           // 3 float, Tx, Ty, Tz
-          api->BxActiveSingleStrayMarkerPosition[i][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxActiveSingleStrayMarkerPosition[i][0] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxActiveSingleStrayMarkerPosition[i][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxActiveSingleStrayMarkerPosition[i][1] = *(float*)replyIndex;
           replyIndex += 4;
-          api->BxActiveSingleStrayMarkerPosition[i][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->BxActiveSingleStrayMarkerPosition[i][2] = *(float*)replyIndex;
           replyIndex += 4;
         }
       }
@@ -1426,25 +1423,25 @@ namespace
       if (mode & NDI_3D_MARKER_POSITIONS)
       {
         // Save marker count
-        api->Bx3DMarkerCount[i] = *replyIndex;
+        api->Bx3DMarkerCount[i] = (char)replyIndex[0];
         replyIndex++;
 
         // Save off out of volume status
         int numBytes = static_cast<int>(ceilf(api->Bx3DMarkerCount[i] / 8.f));
         for (int j = 0; j < numBytes; ++j)
         {
-          api->Bx3DMarkerOutOfVolume[i][j] = *replyIndex;
+          api->Bx3DMarkerOutOfVolume[i][j] = (char)replyIndex[0];
           ++replyIndex;
         }
 
         for (int j = 0; j < api->Bx3DMarkerCount[i]; ++j)
         {
           // 3 float, Tx, Ty, Tz
-          api->Bx3DMarkerPosition[i][j][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->Bx3DMarkerPosition[i][j][0] = *(float*)replyIndex;
           replyIndex += 4;
-          api->Bx3DMarkerPosition[i][j][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->Bx3DMarkerPosition[i][j][1] = *(float*)replyIndex;
           replyIndex += 4;
-          api->Bx3DMarkerPosition[i][j][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+          api->Bx3DMarkerPosition[i][j][2] = *(float*)replyIndex;
           replyIndex += 4;
         }
       }
@@ -1453,7 +1450,7 @@ namespace
     if (mode & NDI_PASSIVE_STRAY)
     {
       // Save marker count
-      api->BxPassiveStrayCount = *replyIndex;
+      api->BxPassiveStrayCount = (char)replyIndex[0];
       replyIndex++;
 
       if (api->BxPassiveStrayCount > 240)
@@ -1466,24 +1463,24 @@ namespace
       int numBytes = static_cast<int>(ceilf(api->BxPassiveStrayCount / 8.f));
       for (int j = 0; j < numBytes; ++j)
       {
-        api->BxPassiveStrayOutOfVolume[j] = *replyIndex;
+        api->BxPassiveStrayOutOfVolume[j] = (char)replyIndex[0];
         ++replyIndex;
       }
 
       for (int j = 0; j < api->BxPassiveStrayCount; ++j)
       {
         // 3 float, Tx, Ty, Tz
-        api->BxPassiveStrayPosition[j][0] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        api->BxPassiveStrayPosition[j][0] = *(float*)replyIndex;
         replyIndex += 4;
-        api->BxPassiveStrayPosition[j][1] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        api->BxPassiveStrayPosition[j][1] = *(float*)replyIndex;
         replyIndex += 4;
-        api->BxPassiveStrayPosition[j][2] = (float)(*replyIndex << 24 | *(replyIndex + 1) << 16 | *(replyIndex + 2) << 8 || *(replyIndex + 3));
+        api->BxPassiveStrayPosition[j][2] = *(float*)replyIndex;
         replyIndex += 4;
       }
     }
 
     // Get the system status
-    api->BxSystemStatus = *replyIndex << 8 | *(replyIndex + 1);
+    api->BxSystemStatus = (char)replyIndex[1] << 8 | (char)replyIndex[0];
     replyIndex += 2;
   }
 
@@ -2052,7 +2049,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     ndiSerialComm(api->SerialDevice, 9600, "8N1", 0);
     ndiSerialFlush(api->SerialDevice, NDI_IOFLUSH);
     ndiSerialBreak(api->SerialDevice);
-    bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047);
+    bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047, false);
 
     // check for correct reply
     if (strncmp(serialReply, "RESETBE6F\r", 8) != 0)
@@ -2110,12 +2107,13 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   {
     int errcode = 0;
 
-    // check that the thread is sending the GX command that we want
+    // check that the thread is sending the GX/BX/TX command that we want
     if (strcmp(command, api->ThreadCommand) != 0)
     {
-      // tell thread to start using the new GX command
+      // tell thread to start using the new GX/BX/TX command
       ndiMutexLock(api->ThreadMutex);
       strcpy(api->ThreadCommand, command);
+      api->IsThreadedCommandBinary = (command[0] == 'B');
       ndiMutexUnlock(api->ThreadMutex);
       // wait for the next data record to arrive (we have to throw it away)
       if (ndiEventWait(api->ThreadBufferEvent, 5000))
@@ -2200,7 +2198,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     bytes = 0;
     if (errcode == 0)
     {
-      bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047);
+      bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047, isBinary);
       if (bytes < 0)
       {
         errcode = NDI_WRITE_ERROR;
@@ -2236,7 +2234,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   }
   else
   {
-    bytes -= 3; // 2 bytes (unsigned short)
+    bytes -= 2; // 2 bytes (unsigned short)
   }
   if (bytes < 0)
   {
@@ -2269,7 +2267,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   }
   else
   {
-    unsigned short replyCrc = *(serialReply + 1) << 8 | *serialReply;
+    unsigned short replyCrc = (unsigned char)serialReply[bytes + 1] << 8 | (unsigned char)serialReply[bytes];
     if (replyCrc != CRC16)
     {
       ndiSetError(api, NDI_BAD_CRC);
@@ -3514,7 +3512,7 @@ static void* ndiThreadFunc(void* userdata)
       return NULL;
     }
 
-    // check whether we have a GX command ready to send
+    // check whether we have a GX/BX/TX command ready to send
     if (command[0] == '\0')
     {
       ndiSerialSleep(pol->SerialDevice, 20);
@@ -3544,7 +3542,7 @@ static void* ndiThreadFunc(void* userdata)
     // read the reply from the Measurement System
     if (errorCode == 0)
     {
-      m = ndiSerialRead(pol->SerialDevice, reply, 2047);
+      m = ndiSerialRead(pol->SerialDevice, reply, 2047, pol->IsThreadedCommandBinary);
       if (m < 0)
       {
         errorCode = NDI_READ_ERROR;

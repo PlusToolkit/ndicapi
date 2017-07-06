@@ -406,7 +406,7 @@ ndicapiExport int ndiSerialWrite(int serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(int serial_port, char* reply, int n)
+ndicapiExport int ndiSerialRead(int serial_port, char* reply, int n, bool isBinary)
 {
   int i = 0;
   int m;
