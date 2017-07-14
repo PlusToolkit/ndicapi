@@ -46,7 +46,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #include <stdarg.h>
 
 #define NDICAPI_MAJOR_VERSION 1
-#define NDICAPI_MINOR_VERSION 6
+#define NDICAPI_MINOR_VERSION 7
 
 struct ndicapi;
 typedef struct ndicapi ndicapi;
