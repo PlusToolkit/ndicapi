@@ -44,6 +44,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #include "ndicapi_serial.h"
 
 #include <stdarg.h>
+#include <limits.h>
 
 #define NDICAPI_MAJOR_VERSION 1
 #define NDICAPI_MINOR_VERSION 7
@@ -218,6 +219,13 @@ typedef void (*NDIErrorCallback)(int errnum, char* description, void* userdata);
 */
 ndicapiExport void ndiSetErrorCallback(ndicapi* pol, NDIErrorCallback callback,
                                        void* userdata);
+
+/*! \ingroup NDIMethods
+Log current state of NDICAPI to string
+
+\return A LF delimited string describing the state of each variable in the system in the format "<variableName>=<variableValue><LF><variableName>=..."
+*/
+ndicapiExport void ndiLogState(ndicapi* pol, char outInformation[USHRT_MAX]);
 
 /*=====================================================================*/
 /*! \defgroup NDIMacros Command Macros

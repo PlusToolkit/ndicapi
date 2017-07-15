@@ -48,6 +48,11 @@ POSSIBILITY OF SUCH DAMAGES.
   #include <dirent.h>
 #endif
 
+#ifdef __cplusplus
+  #include <assert.h>
+  #include <sstream>
+#endif
+
 //----------------------------------------------------------------------------
 // Structure for holding ndicapi data.
 //
@@ -207,6 +212,167 @@ ndicapiExport void ndiSetErrorCallback(ndicapi* pol, NDIErrorCallback callback, 
 {
   pol->ErrorCallback = callback;
   pol->ErrorCallbackData = userdata;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport void ndiLogState(ndicapi* pol, char outInformation[USHRT_MAX])
+{
+#ifdef __cplusplus
+  std::stringstream ss;
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "GxTransforms[" << i << "][52]: " << pol->GxTransforms[i] << std::endl;
+  }
+  ss << "GxStatus[8]: " << pol->GxStatus;
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "GxInformation[" << i << "][12]: " << pol->GxInformation[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "GxSingleStray[" << i << "][24]: " << pol->GxSingleStray[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "GxFrame[" << i << "][8]: " << pol->GxFrame[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "GxPassiveTransforms[" << i << "][52]: " << pol->GxPassiveTransforms[i] << std::endl;
+  }
+  ss << "GxPassiveStatus[24]: " << pol->GxPassiveStatus;
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "GxPassiveInformation[" << i << "][12]: " << pol->GxPassiveInformation[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "GxPassiveFrame[" << i << "][8]: " << pol->GxPassiveFrame[i] << std::endl;
+  }
+  ss << "GxPassiveStray[424]: " << pol->GxPassiveStray;
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "PstatBasic[" << i << "][32]: " << pol->PstatBasic[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "PstatTesting[" << i << "][8]: " << pol->PstatTesting[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "PstatPartNumber[" << i << "][20]: " << pol->PstatPartNumber[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "PstatAccessories[" << i << "][2]: " << pol->PstatAccessories[i] << std::endl;
+  }
+  for (int i = 0; i < 3; ++i)
+  {
+    ss << "PstatMarkerType[" << i << "][2]: " << pol->PstatMarkerType[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "PstatPassiveBasic[" << i << "][32]: " << pol->PstatPassiveBasic[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "PstatPassiveTesting[" << i << "][8]: " << pol->PstatPassiveTesting[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "PstatPassivePartNumber[" << i << "][20]: " << pol->PstatPassivePartNumber[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "PstatPassiveAccessories[" << i << "][2]: " << pol->PstatPassiveAccessories[i] << std::endl;
+  }
+  for (int i = 0; i < 9; ++i)
+  {
+    ss << "PstatPassiveMarkerType[" << i << "][2]: " << pol->PstatPassiveMarkerType[i] << std::endl;
+  }
+  ss << "SstatControl[2]: " << pol->SstatControl << std::endl;
+  ss << "SstatSensor[2]: " << pol->SstatSensor << std::endl;
+  ss << "SstatTiu[2]: " << pol->SstatTiu << std::endl;
+  ss << "IrchkDetected: " << pol->IrchkDetected << std::endl;
+  ss << "IrchkSources[128]: " << pol->IrchkSources << std::endl;
+  ss << "PhrqReply[2]: " << pol->PhrqReply << std::endl;
+  ss << "PhsrReply[1284]: " << pol->PhsrReply << std::endl;
+  ss << "PhinfUnoccupied: " << pol->PhinfUnoccupied << std::endl;
+  ss << "PhinfBasic[34]: " << pol->PhinfBasic << std::endl;
+  ss << "PhinfTesting[8]: " << pol->PhinfTesting << std::endl;
+  ss << "PhinfPartNumber[20]: " << pol->PhinfPartNumber << std::endl;
+  ss << "PhinfAccessories[2]: " << pol->PhinfAccessories << std::endl;
+  ss << "PhinfMarkerType[2]: " << pol->PhinfMarkerType << std::endl;
+  ss << "PhinfPortLocation[14]: " << pol->PhinfPortLocation << std::endl;
+  ss << "PhinfGpioStatus[2]: " << pol->PhinfGpioStatus << std::endl;
+  ss << "TxHandleCount: " << pol->TxHandleCount << std::endl;
+  ss << "TxHandles[NDI_MAX_HANDLES]: " << pol->TxHandles << std::endl;
+  for (int i = 0; i < pol->TxHandleCount; ++i)
+  {
+    ss << "TxTransforms[" << i << "][52]: " << pol->TxTransforms[i] << std::endl;
+  }
+  for (int i = 0; i < pol->TxHandleCount; ++i)
+  {
+    ss << "TxStatus[" << i << "][8]: " << pol->TxStatus[i] << std::endl;
+  }
+  for (int i = 0; i < pol->TxHandleCount; ++i)
+  {
+    ss << "TxFrame[" << i << "][8]: " << pol->TxFrame[i] << std::endl;
+  }
+  for (int i = 0; i < pol->TxHandleCount; ++i)
+  {
+    ss << "TxInformation[" << i << "][12]: " << pol->TxInformation[i] << std::endl;
+  }
+  for (int i = 0; i < pol->TxHandleCount; ++i)
+  {
+    ss << "TxSingleStray[" << i << "][24]: " << pol->TxSingleStray[i] << std::endl;
+  }
+  ss << "TxSystemStatus[4]: " << pol->TxSystemStatus << std::endl;
+  ss << "TxPassiveStrayCount: " << pol->TxPassiveStrayCount << std::endl;
+  ss << "TxPassiveStrayOov[14]: " << pol->TxPassiveStrayOov << std::endl;
+  ss << "TxPassiveStray[1052]: " << pol->TxPassiveStray << std::endl;
+  ss << "BxHandleCount: " << pol->BxHandleCount << std::endl;
+  ss << "BxHandles[NDI_MAX_HANDLES]: " << pol->BxHandles << std::endl;
+  ss << "BxHandlesStatus[NDI_MAX_HANDLES]: " << pol->BxHandlesStatus << std::endl;
+  ss << "BxFrameNumber[NDI_MAX_HANDLES]: " << pol->BxFrameNumber << std::endl;
+  for (int i = 0; i < pol->BxHandleCount; ++i)
+  {
+    ss << "BxTransforms[" << i << "][8]: " << pol->BxTransforms[i] << std::endl;
+  }
+  ss << "BxPortStatus[NDI_MAX_HANDLES]: " << pol->BxPortStatus << std::endl;
+  for (int i = 0; i < pol->BxHandleCount; ++i)
+  {
+    ss << "BxToolMarkerInformation[" << i << "][11]: " << pol->BxToolMarkerInformation[i] << std::endl;
+  }
+  ss << "BxActiveSingleStrayMarkerStatus[NDI_MAX_HANDLES]: " << pol->BxActiveSingleStrayMarkerStatus << std::endl;
+  for (int i = 0; i < pol->BxHandleCount; ++i)
+  {
+    ss << "BxActiveSingleStrayMarkerPosition[" << i << "][3]: " << pol->BxActiveSingleStrayMarkerPosition[i] << std::endl;
+  }
+  ss << "Bx3DMarkerCount[NDI_MAX_HANDLES]: " << pol->Bx3DMarkerCount << std::endl;
+  for (int i = 0; i < pol->BxHandleCount; ++i)
+  {
+    ss << "Bx3DMarkerOutOfVolume[" << i << "][3]: " << pol->Bx3DMarkerOutOfVolume[i] << std::endl;
+  }
+  for (int i = 0; i < pol->BxHandleCount; ++i)
+  {
+    for (int j = 0; j < pol->Bx3DMarkerCount[i]; j++)
+    {
+      ss << "Bx3DMarkerPosition[" << i << "][" << j << "][3]: " << pol->Bx3DMarkerPosition[i][j] << std::endl;
+    }
+  }
+  ss << "BxPassiveStrayCount: " << pol->BxPassiveStrayCount << std::endl;
+  ss << "BxPassiveStrayOutOfVolume[30]: " << pol->BxPassiveStrayOutOfVolume << std::endl;
+  for (int i = 0; i < pol->BxPassiveStrayCount; ++i)
+  {
+    ss << "BxPassiveStrayPosition[" << i << "][3]: " << pol->BxPassiveStrayPosition[i] << std::endl;
+  }
+
+  assert(ss.str().size() < USHRT_MAX);
+  strncpy(&outInformation[0], ss.str().c_str(), ss.str().size());
+#else
+  // Someone else can implement c style string building
+#endif
 }
 
 //----------------------------------------------------------------------------
