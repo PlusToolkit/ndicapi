@@ -42,6 +42,7 @@ POSSIBILITY OF SUCH DAMAGES.
 
 #include "ndicapiExport.h"
 #include "ndicapi_serial.h"
+#include "ndicapi_socket.h"
 
 #include <stdarg.h>
 #include <limits.h>
@@ -73,7 +74,7 @@ extern "C" {
 
   If \em i is too large, the return value is zero.
 */
-ndicapiExport char* ndiDeviceName(int i);
+ndicapiExport char* ndiSerialDeviceName(int i);
 
 /*! \ingroup NDIMethods
   Probe for an NDI device on the specified serial port device.
@@ -96,7 +97,7 @@ ndicapiExport char* ndiDeviceName(int i);
   - NDI_TIMEOUT      -  timeout while waiting for data
   - NDI_PROBE_FAIL   -  the device found was not an NDI device
 */
-ndicapiExport int ndiProbe(const char* device);
+ndicapiExport int ndiSerialProbe(const char* device);
 
 /*! \ingroup NDIMethods
   Open communication with the NDI device on the specified
@@ -108,18 +109,32 @@ ndicapiExport int ndiProbe(const char* device);
   \return 1 if an NDI device was found on the specified port, 0 otherwise
 
 */
-ndicapiExport ndicapi* ndiOpen(const char* device);
+ndicapiExport ndicapi* ndiOpenSerial(const char* device);
+
+/*! \ingroup NDIMethods
+Open communication with the NDI device on the specified
+network host and port.
+
+\param hostname URL of the NDI device
+\param port Port of the NDI device
+
+\return 1 if an NDI device was found at the specified address, 0 otherwise
+
+*/
+ndicapiExport ndicapi* ndiOpenNetwork(const char* hostname, int port);
 
 /*! \ingroup NDIMethods
   Close communication with the NDI device.  You should send
   a "COMM:00000" command before you close communication so that you
   can resume communication on a subsequent call to ndiOpen() without
   having to reset the NDI device.
-
-  \return  a handle for an NDI device, or zero if device
-         could not be opened
 */
-ndicapiExport void ndiClose(ndicapi* pol);
+ndicapiExport void ndiCloseSerial(ndicapi* pol);
+
+/*! \ingroup NDIMethods
+Close communication with the NDI device.
+*/
+ndicapiExport void ndiCloseNetwork(ndicapi* pol);
 
 /*! \ingroup NDIMethods
   Set up multithreading to increase efficiency.
@@ -707,14 +722,29 @@ ndicapiExport int ndiGetError(ndicapi* pol);
   Get the name of the serial port device that the device is
   attached to.
 */
-ndicapiExport char* ndiGetDeviceName(ndicapi* pol);
+ndicapiExport char* ndiGetSerialDeviceName(ndicapi* pol);
 
 /*! \ingroup GetMethods
-  Get the device handle for the serial port that the device is
-  attached to.  This device handle is the value returned by the UNIX open()
-  function or the Win32 CreateFile() function.
+Get the device handle for the serial port that the device is
+attached to.  This device handle is the value returned by the UNIX open()
+function or the Win32 CreateFile() function.
 */
 ndicapiExport NDIFileHandle ndiGetDeviceHandle(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get the socket that the device is attached to.
+*/
+ndicapiExport int ndiGetSocket(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get the name of the host the device is attached to.
+*/
+ndicapiExport char* ndiGetHostname(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get the port that the device is attached to.
+*/
+ndicapiExport int ndiGetPort(ndicapi* pol);
 
 /*! \ingroup GetMethods
   Check the current theading mode.  The default is 0 (no multithreading).

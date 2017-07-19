@@ -32,6 +32,7 @@ SET(${PROJECT_NAME}_SRCS
   ndicapi_math.cxx
   ndicapi_serial.cxx
   ndicapi_thread.cxx
+  ndicapi_socket.cxx
   )
 
 IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
@@ -40,6 +41,7 @@ IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
     ndicapi_thread.h
     ndicapi_serial.h
     ndicapi.h
+    ndicapi_socket.h
   )
 ENDIF()
 
@@ -48,6 +50,12 @@ IF(NOT WIN32)
   SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
 ENDIF()
 target_include_directories(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_INCLUDE_DIRS})
+
+IF(MSVC)
+  target_link_libraries(${PROJECT_NAME} PUBLIC wsock32 ws2_32)
+ELSE()
+
+ENDIF()
 
 INSTALL(TARGETS ${PROJECT_NAME} EXPORT ndicapi
   RUNTIME DESTINATION bin CONFIGURATIONS Release COMPONENT RuntimeLibraries

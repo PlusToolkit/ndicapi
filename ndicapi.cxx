@@ -70,8 +70,13 @@ struct ndicapi
   // low-level communication information
   NDIFileHandle SerialDevice;             // file handle for ndicapi
   char* SerialDeviceName;                 // device name for ndicapi
-  char* SerialCommand;                    // text sent to the ndicapi
-  char* SerialReply;                      // reply from the ndicapi
+
+  int Socket;                             // socket handle
+  char* Hostname;                         // socket hostname
+  int Port;                               // socket port
+
+  char* Command;                          // text sent to the ndicapi
+  char* Reply;                            // reply from the ndicapi
 
   // this is set to true during tracking mode
   bool IsTracking;
@@ -89,7 +94,7 @@ struct ndicapi
   int ThreadErrorCode;                    // error code to go with buffer
 
   // command reply -- this is the return value from plCommand()
-  char* CommandReply;                     // reply without CRC and <CR>
+  char* ReplyNoCRC;                     // reply without CRC and <CR>
 
   // error handling information
   int ErrorCode;                          // error code (zero if no error)
@@ -674,7 +679,7 @@ ndicapiExport char* ndiErrorString(int errnum)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport char* ndiDeviceName(int i)
+ndicapiExport char* ndiSerialDeviceName(int i)
 {
 #if defined(_WIN32)
 
@@ -738,7 +743,7 @@ ndicapiExport char* ndiDeviceName(int i)
 
 #else
 
-  // Linux/unix variants
+  // Linux/Unix variants
 
 #ifdef NDI_DEVICE0
   if (i == 0) { return NDI_DEVICE0; }
@@ -771,7 +776,7 @@ ndicapiExport char* ndiDeviceName(int i)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiProbe(const char* device)
+ndicapiExport int ndiSerialProbe(const char* device)
 {
   char reply[1024];
   char init_reply[16];
@@ -885,7 +890,7 @@ ndicapiExport int ndiProbe(const char* device)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport ndicapi* ndiOpen(const char* device)
+ndicapiExport ndicapi* ndiOpenSerial(const char* device)
 {
   NDIFileHandle serial_port;
   ndicapi* pol;
@@ -922,27 +927,30 @@ ndicapiExport ndicapi* ndiOpen(const char* device)
 
   // allocate the buffers
   pol->SerialDeviceName = (char*)malloc(strlen(device) + 1);
-  pol->SerialCommand = (char*)malloc(2048);
-  pol->SerialReply = (char*)malloc(2048);
-  pol->CommandReply = (char*)malloc(2048);
+  pol->Command = (char*)malloc(2048);
+  pol->Reply = (char*)malloc(2048);
+  pol->ReplyNoCRC = (char*)malloc(2048);
+  pol->Hostname = NULL;
+  pol->Port = -1;
+  pol->Socket = -1;
 
-  if (pol->SerialDeviceName == 0 || pol->SerialCommand == 0 || pol->SerialReply == 0 || pol->CommandReply == 0)
+  if (pol->SerialDeviceName == 0 || pol->Command == 0 || pol->Reply == 0 || pol->ReplyNoCRC == 0)
   {
     if (pol->SerialDeviceName)
     {
       free(pol->SerialDeviceName);
     }
-    if (pol->SerialCommand)
+    if (pol->Command)
     {
-      free(pol->SerialCommand);
+      free(pol->Command);
     }
-    if (pol->SerialReply)
+    if (pol->Reply)
     {
-      free(pol->SerialReply);
+      free(pol->Reply);
     }
-    if (pol->CommandReply)
+    if (pol->ReplyNoCRC)
     {
-      free(pol->CommandReply);
+      free(pol->ReplyNoCRC);
     }
 
     ndiSerialClose(serial_port);
@@ -951,17 +959,77 @@ ndicapiExport ndicapi* ndiOpen(const char* device)
 
   // initialize the allocated memory
   strcpy(pol->SerialDeviceName, device);
-  memset(pol->SerialCommand, 0, 2048);
-  memset(pol->SerialReply, 0, 2048);
-  memset(pol->CommandReply, 0, 2048);
+  memset(pol->Command, 0, 2048);
+  memset(pol->Reply, 0, 2048);
+  memset(pol->ReplyNoCRC, 0, 2048);
 
   return pol;
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport char* ndiGetDeviceName(ndicapi* pol)
+ndicapiExport ndicapi* ndiOpenNetwork(const char* hostname, int port)
+{
+  NDISocketHandle socket;
+  ndicapi* device;
+
+  int connected = ndiSocketOpen(hostname, port, socket);
+
+  if (socket == -1 || connected == -1)
+  {
+    return NULL;
+  }
+
+  device = (ndicapi*)malloc(sizeof(ndicapi));
+
+  if (device == 0)
+  {
+    ndiSocketClose(socket);
+    return NULL;
+  }
+
+  memset(device, 0, sizeof(ndicapi));
+  device->Hostname = new char[strlen(hostname) + 1];
+  device->Hostname = strncpy(device->Hostname, hostname, strlen(hostname));
+  device->Port = port;
+  device->Socket = socket;
+  device->SerialDevice = NDI_INVALID_HANDLE;
+  device->SerialDeviceName = NULL;
+
+  // allocate the buffers
+  device->Command = (char*)malloc(2048);
+  device->Reply = (char*)malloc(2048);
+  device->ReplyNoCRC = (char*)malloc(2048);
+
+  // initialize the allocated memory
+  memset(device->Command, 0, 2048);
+  memset(device->Reply, 0, 2048);
+  memset(device->ReplyNoCRC, 0, 2048);
+
+  return device;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport char* ndiGetSerialDeviceName(ndicapi* pol)
 {
   return pol->SerialDeviceName;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetSocket(ndicapi* pol)
+{
+  return pol->Socket;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport char* ndiGetHostname(ndicapi* pol)
+{
+  return pol->Hostname;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetPort(ndicapi* pol)
+{
+  return pol->Port;
 }
 
 //----------------------------------------------------------------------------
@@ -971,21 +1039,44 @@ ndicapiExport NDIFileHandle ndiGetDeviceHandle(ndicapi* pol)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport void ndiClose(ndicapi* pol)
+ndicapiExport void ndiCloseSerial(ndicapi* device)
 {
   // end the tracking thread if it is running
-  ndiSetThreadMode(pol, 0);
+  ndiSetThreadMode(device, 0);
 
   // close the serial port
-  ndiSerialClose(pol->SerialDevice);
+  ndiSerialClose(device->SerialDevice);
 
   // free the buffers
-  free(pol->SerialDeviceName);
-  free(pol->SerialCommand);
-  free(pol->SerialReply);
-  free(pol->CommandReply);
+  free(device->SerialDeviceName);
+  free(device->Command);
+  free(device->Reply);
+  free(device->ReplyNoCRC);
+  device->SerialDeviceName = NULL;
+  device->SerialDevice = NDI_INVALID_HANDLE;
 
-  free(pol);
+  free(device);
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport void ndiCloseNetwork(ndicapi* device)
+{
+  // end the tracking thread if it is running
+  ndiSetThreadMode(device, 0);
+
+  // close the serial port
+  ndiSocketClose(device->Socket);
+
+  // free the buffers
+  free(device->Hostname);
+  free(device->Command);
+  free(device->Reply);
+  free(device->ReplyNoCRC);
+  device->Hostname = NULL;
+  device->Port = -1;
+  device->Socket = -1;
+
+  free(device);
 }
 
 //----------------------------------------------------------------------------
@@ -2157,7 +2248,14 @@ namespace
   // Sleep for 100 milliseconds after an INIT command.
   void ndiINITHelper(ndicapi* pol, const char* command, const char* commandReply)
   {
-    ndiSerialSleep(pol->SerialDevice, 100);
+    if (pol->SerialDevice != NDI_INVALID_HANDLE)
+    {
+      ndiSerialSleep(pol->SerialDevice, 100);
+    }
+    else
+    {
+      ndiSocketSleep(pol->Socket, 100);
+    }
   }
 }
 
@@ -2182,21 +2280,21 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   bool useCrc = false;
   bool inCommand = true;
   char* command;
-  char* serialReply;
+  char* reply;
   char* commandReply;
 
-  command = api->SerialCommand;       // text sent to ndicapi
-  serialReply = api->SerialReply;     // text received from ndicapi
-  commandReply = api->CommandReply;   // received text, with CRC hacked off
+  command = api->Command;       // text sent to ndicapi
+  reply = api->Reply;     // text received from ndicapi
+  commandReply = api->ReplyNoCRC;   // received text, with CRC hacked off
   commandLength = 0;                  // length of 'command' part of command
 
   api->ErrorCode = 0;                 // clear error
   command[0] = '\0';
-  serialReply[0] = '\0';
+  reply[0] = '\0';
   commandReply[0] = '\0';
 
   // verify that the serial device was opened
-  if (api->SerialDevice == NDI_INVALID_HANDLE)
+  if (api->SerialDevice == NDI_INVALID_HANDLE && api->Hostname == NULL && api->Port < 0)
   {
     ndiSetError(api, NDI_OPEN_ERROR);
     return commandReply;
@@ -2212,22 +2310,29 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     }
     api->IsTracking = false;
 
-    ndiSerialComm(api->SerialDevice, 9600, "8N1", 0);
-    ndiSerialFlush(api->SerialDevice, NDI_IOFLUSH);
-    ndiSerialBreak(api->SerialDevice);
-    bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047, false);
+    if (api->SerialDevice != NDI_INVALID_HANDLE)
+    {
+      ndiSerialComm(api->SerialDevice, 9600, "8N1", 0);
+      ndiSerialFlush(api->SerialDevice, NDI_IOFLUSH);
+      ndiSerialBreak(api->SerialDevice);
+      bytes = ndiSerialRead(api->SerialDevice, reply, 2047, false);
+    }
+    else
+    {
+      bytes = ndiSocketRead(api->Socket, reply, 2047, false);
+    }
 
     // check for correct reply
-    if (strncmp(serialReply, "RESETBE6F\r", 8) != 0)
+    if (strncmp(reply, "RESETBE6F\r", 8) != 0)
     {
       ndiSetError(api, NDI_RESET_FAIL);
       return commandReply;
     }
 
     // terminate the reply string
-    serialReply[bytes] = '\0';
+    reply[bytes] = '\0';
     bytes -= 5;
-    strncpy(commandReply, serialReply, bytes);
+    strncpy(commandReply, reply, bytes);
     commandReply[bytes] = '\0';
 
     // return the reply string, minus the CRC
@@ -2298,11 +2403,11 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     ndiMutexLock(api->ThreadBufferMutex);
     for (bytes = 0; api->ThreadBuffer[bytes] != '\0'; bytes++)
     {
-      serialReply[bytes] = api->ThreadBuffer[bytes];
+      reply[bytes] = api->ThreadBuffer[bytes];
     }
     if (!isBinary)
     {
-      serialReply[bytes] = '\0';   // terminate string
+      reply[bytes] = '\0';   // terminate string
     }
     errcode = api->ThreadErrorCode;
     ndiMutexUnlock(api->ThreadBufferMutex);
@@ -2342,14 +2447,28 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       }
     }
 
-    // flush the input buffer, because anything that we haven't read
-    //   yet is garbage left over by a previously failed command
-    ndiSerialFlush(api->SerialDevice, NDI_IFLUSH);
+    if (api->SerialDevice != NDI_INVALID_HANDLE)
+    {
+      // flush the input buffer, because anything that we haven't read
+      //   yet is garbage left over by a previously failed command
+      ndiSerialFlush(api->SerialDevice, NDI_IFLUSH);
+    }
+    else
+    {
+      ndiSocketFlush(api->Socket, NDI_IFLUSH);
+    }
 
     // send the command to the Measurement System
     if (errcode == 0)
     {
-      bytes = ndiSerialWrite(api->SerialDevice, command, i);
+      if (api->SerialDevice != NDI_INVALID_HANDLE)
+      {
+        bytes = ndiSerialWrite(api->SerialDevice, command, i);
+      }
+      else
+      {
+        bytes = ndiSocketWrite(api->Socket, command, i);
+      }
       if (bytes < 0)
       {
         errcode = NDI_WRITE_ERROR;
@@ -2364,7 +2483,14 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     bytes = 0;
     if (errcode == 0)
     {
-      bytes = ndiSerialRead(api->SerialDevice, serialReply, 2047, isBinary);
+      if (api->SerialDevice != NDI_INVALID_HANDLE)
+      {
+        bytes = ndiSerialRead(api->SerialDevice, reply, 2047, isBinary);
+      }
+      else
+      {
+        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary);
+      }
       if (bytes < 0)
       {
         errcode = NDI_WRITE_ERROR;
@@ -2376,7 +2502,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       }
       if (!isBinary)
       {
-        serialReply[bytes] = '\0';   // terminate string
+        reply[bytes] = '\0';   // terminate string
       }
     }
 
@@ -2412,8 +2538,8 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   CRC16 = 0;
   for (i = 0; i < bytes; i++)
   {
-    CalcCRC16(serialReply[i], &CRC16);
-    commandReply[i] = serialReply[i];
+    CalcCRC16(reply[i], &CRC16);
+    commandReply[i] = reply[i];
   }
 
   if (!isBinary)
@@ -2425,7 +2551,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   if (!isBinary)
   {
     // read and check the CRC value of the reply
-    if (CRC16 != ndiHexToUnsignedLong(&serialReply[bytes], 4))
+    if (CRC16 != ndiHexToUnsignedLong(&reply[bytes], 4))
     {
       ndiSetError(api, NDI_BAD_CRC);
       return commandReply;
@@ -2433,7 +2559,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   }
   else
   {
-    unsigned short replyCrc = (unsigned char)serialReply[bytes + 1] << 8 | (unsigned char)serialReply[bytes];
+    unsigned short replyCrc = (unsigned char)reply[bytes + 1] << 8 | (unsigned char)reply[bytes];
     if (replyCrc != CRC16)
     {
       ndiSetError(api, NDI_BAD_CRC);
@@ -3681,20 +3807,41 @@ static void* ndiThreadFunc(void* userdata)
     // check whether we have a GX/BX/TX command ready to send
     if (command[0] == '\0')
     {
-      ndiSerialSleep(pol->SerialDevice, 20);
+      if (pol->SerialDevice != NDI_INVALID_HANDLE)
+      {
+        ndiSerialSleep(pol->SerialDevice, 20);
+      }
+      else
+      {
+        ndiSocketSleep(pol->Socket, 20);
+      }
       ndiMutexUnlock(pol->ThreadMutex);
       continue;
     }
 
     // flush the input buffer, because anything that we haven't read
     //   yet is garbage left over by a previously failed command
-    ndiSerialFlush(pol->SerialDevice, NDI_IFLUSH);
+    if (pol->SerialDevice != NDI_INVALID_HANDLE)
+    {
+      ndiSerialFlush(pol->SerialDevice, NDI_IFLUSH);
+    }
+    else
+    {
+      ndiSocketFlush(pol->Socket, NDI_IFLUSH);
+    }
 
     // send the command to the Measurement System
     i = strlen(command);
     if (errorCode == 0)
     {
-      m = ndiSerialWrite(pol->SerialDevice, command, i);
+      if (pol->SerialDevice != NDI_INVALID_HANDLE)
+      {
+        m = ndiSerialWrite(pol->SerialDevice, command, i);
+      }
+      else
+      {
+        m = ndiSocketWrite(pol->Socket, command, i);
+      }
       if (m < 0)
       {
         errorCode = NDI_WRITE_ERROR;
@@ -3708,7 +3855,14 @@ static void* ndiThreadFunc(void* userdata)
     // read the reply from the Measurement System
     if (errorCode == 0)
     {
-      m = ndiSerialRead(pol->SerialDevice, reply, 2047, pol->IsThreadedCommandBinary);
+      if (pol->SerialDevice != NDI_INVALID_HANDLE)
+      {
+        m = ndiSerialRead(pol->SerialDevice, reply, 2047, pol->IsThreadedCommandBinary);
+      }
+      else
+      {
+        m = ndiSocketRead(pol->Socket, reply, 2047, pol->IsThreadedCommandBinary);
+      }
       if (m < 0)
       {
         errorCode = NDI_READ_ERROR;

@@ -68,7 +68,7 @@ extern "C" {
 */
 
 #ifdef _WIN32
-
+#define _WINSOCKAPI_
 #include <windows.h>
 typedef HANDLE NDIFileHandle;
 #define NDI_INVALID_HANDLE INVALID_HANDLE_VALUE
