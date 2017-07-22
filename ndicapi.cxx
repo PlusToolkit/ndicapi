@@ -874,10 +874,12 @@ ndicapiExport int ndiSerialProbe(const char* device)
     }
   }
 
-  // use VER command to verify that this is a NDI device
   ndiSerialSleep(serial_port, 100);
-  if (ndiSerialWrite(serial_port, "VER:065EE\r", 10) < 10 ||
-      (n = ndiSerialRead(serial_port, reply, 1023, false)) < 7)
+  // Example exchange with Polaris Vicra
+  //>> GETINFO:Features.Firmware.Version0492
+  //<< Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision number99A8
+  if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", 10) < 10 ||
+      (n = ndiSerialRead(serial_port, reply, 1023, false)) < 84)
   {
     ndiSerialClose(serial_port);
     return NDI_PROBE_FAIL;
