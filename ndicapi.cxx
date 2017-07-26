@@ -2365,6 +2365,12 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       commandLength = i;                            // command length
     }
   }
+  if (inCommand)
+  {
+    // Command was sent with no ':'
+    // Example, ndiCommand("INIT");
+    commandLength = i;
+  }
 
   if (useCrc)
   {
