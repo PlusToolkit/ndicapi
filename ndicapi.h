@@ -741,7 +741,7 @@ ndicapiExport NDIFileHandle ndiGetDeviceHandle(ndicapi* pol);
 /*! \ingroup GetMethods
 Get the socket that the device is attached to.
 */
-ndicapiExport int ndiGetSocket(ndicapi* pol);
+ndicapiExport NDISocketHandle ndiGetSocket(ndicapi* pol);
 
 /*! \ingroup GetMethods
 Get the name of the host the device is attached to.

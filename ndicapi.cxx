@@ -37,6 +37,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #endif
 
 #include "ndicapi.h"
+#include "ndicapi_socket.h"
 #include "ndicapi_thread.h"
 
 #include <string.h>
@@ -71,7 +72,7 @@ struct ndicapi
   NDIFileHandle SerialDevice;             // file handle for ndicapi
   char* SerialDeviceName;                 // device name for ndicapi
 
-  int Socket;                             // socket handle
+  NDISocketHandle Socket;                 // socket handle
   char* Hostname;                         // socket hostname
   int Port;                               // socket port
 
@@ -1023,7 +1024,7 @@ ndicapiExport char* ndiGetSerialDeviceName(ndicapi* pol)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiGetSocket(ndicapi* pol)
+ndicapiExport NDISocketHandle ndiGetSocket(ndicapi* pol)
 {
   return pol->Socket;
 }
