@@ -179,7 +179,7 @@ ndicapiExport void ndiSetThreadMode(ndicapi* pol, bool mode);
   "PENA:AD".  A CRC value and a carriage return will be appended to the
   command before it is sent to the device.
 
-  This function will automatically recogize certain commands and behave
+  This function will automatically recognize certain commands and behave
   accordingly:
   - NULL - A serial break will be sent to the device.
   - "COMM:" - After the COMM is sent, the host computer serial port is
@@ -238,9 +238,16 @@ ndicapiExport void ndiSetErrorCallback(ndicapi* pol, NDIErrorCallback callback,
 /*! \ingroup NDIMethods
 Log current state of NDICAPI to string
 
-\return A LF delimited string describing the state of each variable in the system in the format "<variableName>=<variableValue><LF><variableName>=..."
+\param outInformation A LF delimited string describing the state of each variable in the system in the format "<variableName>=<variableValue><LF><variableName>=..."
 */
 ndicapiExport void ndiLogState(ndicapi* pol, char outInformation[USHRT_MAX]);
+
+/*! \ingroup NDIMethods
+Set the socket timeout
+
+\param timeoutMsec the timeout in milliseconds
+*/
+ndicapiExport void ndiTimeoutSocket(ndicapi* pol, int timeoutMsec);
 
 /*=====================================================================*/
 /*! \defgroup NDIMacros Command Macros

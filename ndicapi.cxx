@@ -381,6 +381,12 @@ ndicapiExport void ndiLogState(ndicapi* pol, char outInformation[USHRT_MAX])
 }
 
 //----------------------------------------------------------------------------
+ndicapiExport void ndiTimeoutSocket(ndicapi* pol, int timeoutMsec)
+{
+  ndiSocketTimeout(pol->Socket, timeoutMsec);
+}
+
+//----------------------------------------------------------------------------
 ndicapiExport NDIErrorCallback ndiGetErrorCallback(ndicapi* pol)
 {
   return pol->ErrorCallback;
