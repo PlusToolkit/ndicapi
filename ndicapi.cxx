@@ -431,6 +431,37 @@ ndicapiExport unsigned long ndiHexToUnsignedLong(const char* string, int n)
 }
 
 //----------------------------------------------------------------------------
+ndicapiExport unsigned int ndiHexToUnsignedInt(const char* string, int n)
+{
+  int i;
+  unsigned int result = 0;
+  int c;
+
+  for (i = 0; i < n; i++)
+  {
+    c = string[i];
+    if (c >= 'a' && c <= 'f')
+    {
+      result = (result << 4) | (c + (10 - 'a'));
+    }
+    else if (c >= 'A' && c <= 'F')
+    {
+      result = (result << 4) | (c + (10 - 'A'));
+    }
+    else if (c >= '0' && c <= '9')
+    {
+      result = (result << 4) | (c - '0');
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  return result;
+}
+
+//----------------------------------------------------------------------------
 ndicapiExport long ndiSignedToLong(const char* cp, int n)
 {
   int i;

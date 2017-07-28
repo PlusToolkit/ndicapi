@@ -1713,10 +1713,17 @@ ndicapiExport char* ndiErrorString(int errnum);
   Convert \em n characters of a hexidecimal string into an unsigned long.
   The conversion halts if a non-hexidecimal digit is found.
 
-  The primary use of this function is decoding replies from the
-  device.
+  The primary use of this function is decoding replies from the device.
 */
 ndicapiExport unsigned long ndiHexToUnsignedLong(const char* cp, int n);
+
+/*! \ingroup ConversionFunctions
+Convert \em n characters of a hexidecimal string into an unsigned int.
+The conversion halts if a non-hexidecimal digit is found.
+
+The primary use of this function is decoding replies from the device.
+*/
+ndicapiExport unsigned int ndiHexToUnsignedInt(const char* cp, int n);
 
 /*! \ingroup ConversionFunctions
   Convert \em n characters of a signed decimal string to a long.
