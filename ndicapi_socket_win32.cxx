@@ -130,6 +130,11 @@ ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberO
         Sleep(1);
         continue;
       }
+      if (*outErrorCode == WSAETIMEDOUT)
+      {
+        // NDI handles 0 bytes returned as a timeout
+        return 0;
+      }
       return -1;
     }
     else if (numberOfBytesRead == 0)

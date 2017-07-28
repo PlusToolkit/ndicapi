@@ -2550,7 +2550,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       }
       if (bytes < 0)
       {
-        errcode = NDI_WRITE_ERROR;
+        errcode = NDI_READ_ERROR;
         bytes = 0;
       }
       else if (bytes == 0)
