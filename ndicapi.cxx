@@ -2420,9 +2420,9 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   command[i++] = '\r';                              // tack on carriage return
   command[i] = '\0';                                // terminate for good luck
 
-  bool isBinary = (strncmp(command, "BX", commandLength) == 0 && strlen(command) == strlen("BX") ||
-                   strncmp(command, "GETLOG", commandLength) == 0 && strlen(command) == strlen("GETLOG") ||
-                   strncmp(command, "VGET", commandLength) == 0 && strlen(command) == strlen("VGET"));
+  bool isBinary = (strncmp(command, "BX", commandLength) == 0 && commandLength == strlen("BX") ||
+                   strncmp(command, "GETLOG", commandLength) == 0 && commandLength == strlen("GETLOG") ||
+                   strncmp(command, "VGET", commandLength) == 0 && commandLength == strlen("VGET"));
 
 
   // if the command is GX, TX, or BX and thread_mode is on, we copy the reply from
