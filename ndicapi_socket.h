@@ -100,7 +100,7 @@ is not a carriage return (i.e. reply[n-1] != '\r'), then the
 read was incomplete and there are more characters waiting to
 be read.
 */
-ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary);
+ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary, int* outErrorCode);
 
 /*! \ingroup NDISocket
 Sleep the socket

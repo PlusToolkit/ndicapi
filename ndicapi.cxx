@@ -75,6 +75,7 @@ struct ndicapi
   NDISocketHandle Socket;                 // socket handle
   char* Hostname;                         // socket hostname
   int Port;                               // socket port
+  int SocketErrorCode;                    // error code (zero if no error)
 
   char* Command;                          // text sent to the ndicapi
   char* Reply;                            // reply from the ndicapi
@@ -620,6 +621,12 @@ ndicapiExport int ndiPVWRFromFile(ndicapi* pol, int port, char* filename)
 ndicapiExport int ndiGetError(ndicapi* pol)
 {
   return pol->ErrorCode;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetSocketError(ndicapi* pol)
+{
+  return pol->SocketErrorCode;
 }
 
 //----------------------------------------------------------------------------
@@ -2359,7 +2366,8 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     }
     else
     {
-      bytes = ndiSocketRead(api->Socket, reply, 2047, false);
+      int errorCode;
+      bytes = ndiSocketRead(api->Socket, reply, 2047, false, &errorCode);
     }
 
     // check for correct reply
@@ -2412,7 +2420,9 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   command[i++] = '\r';                              // tack on carriage return
   command[i] = '\0';                                // terminate for good luck
 
-  bool isBinary = (strncmp(command, "BX", commandLength) == 0 || strncmp(command, "GETLOG", commandLength) == 0 || strncmp(command, "VGET", commandLength) == 0);
+  bool isBinary = (strncmp(command, "BX", commandLength) == 0 && strlen(command) == strlen("BX") ||
+                   strncmp(command, "GETLOG", commandLength) == 0 && strlen(command) == strlen("GETLOG") ||
+                   strncmp(command, "VGET", commandLength) == 0 && strlen(command) == strlen("VGET"));
 
 
   // if the command is GX, TX, or BX and thread_mode is on, we copy the reply from
@@ -2535,7 +2545,8 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       }
       else
       {
-        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary);
+        int errorCode;
+        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary, &errorCode);
       }
       if (bytes < 0)
       {
@@ -3907,7 +3918,8 @@ static void* ndiThreadFunc(void* userdata)
       }
       else
       {
-        m = ndiSocketRead(pol->Socket, reply, 2047, pol->IsThreadedCommandBinary);
+        int errorCode;
+        m = ndiSocketRead(pol->Socket, reply, 2047, pol->IsThreadedCommandBinary, &errorCode);
       }
       if (m < 0)
       {

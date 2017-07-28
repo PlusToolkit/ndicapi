@@ -110,11 +110,11 @@ ndicapiExport int ndiSocketWrite(NDISocketHandle socket, const char* data, int l
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary)
+ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary, int* outErrorCode)
 {
   int totalNumberOfBytesRead = 0;
   int totalNumberOfBytesToRead = numberOfBytesToRead;
-  DWORD numberOfBytesRead;
+  int numberOfBytesRead;
   bool binarySizeCalculated = false;
 
   do
@@ -122,18 +122,19 @@ ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberO
     int trys = 0;
     numberOfBytesRead = recv(socket, reply + totalNumberOfBytesRead, numberOfBytesToRead, 0);
 
-    if (numberOfBytesRead < 0)
+    if (numberOfBytesRead == SOCKET_ERROR)
     {
-      return -1;
-    }
-    else if (numberOfBytesRead == 0)   /* no characters read, must have timed out */
-    {
-      int error = WSAGetLastError();
-      if ((error == WSAENOBUFS) && (trys++ < 1000))
+      *outErrorCode = WSAGetLastError();
+      if ((*outErrorCode == WSAENOBUFS) && (trys++ < 1000))
       {
         Sleep(1);
         continue;
       }
+      return -1;
+    }
+    else if (numberOfBytesRead == 0)
+    {
+      // Connection has been closed
       return 0;
     }
 

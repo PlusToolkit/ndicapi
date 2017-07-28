@@ -726,6 +726,12 @@ ndicapiExport int ndiPVWRFromFile(ndicapi* pol, int ph, char* filename);
 ndicapiExport int ndiGetError(ndicapi* pol);
 
 /*! \ingroup GetMethods
+Get error code from the last socket command.  This provides more detailed information
+after calling ndiGetError(...)
+*/
+ndicapiExport int ndiGetSocketError(ndicapi* pol);
+
+/*! \ingroup GetMethods
   Get the name of the serial port device that the device is
   attached to.
 */

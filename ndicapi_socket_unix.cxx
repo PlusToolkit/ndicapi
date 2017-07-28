@@ -115,7 +115,7 @@ ndicapiExport int ndiSocketWrite(NDISocketHandle socket, const char* data, int l
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary)
+ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberOfBytesToRead, bool isBinary, int* outErrorCode)
 {
   int totalNumberOfBytesRead = 0;
   int totalNumberOfBytesToRead = numberOfBytesToRead;
