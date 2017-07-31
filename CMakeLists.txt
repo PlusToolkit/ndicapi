@@ -22,6 +22,16 @@ IF(NOT DEFINED BUILD_SHARED_LIBS)
 ENDIF()
 OPTION(BUILD_SHARED_LIBS "Build shared libraries" ${BUILD_SHARED_LIBS})
 
+# --------------------------------------------------------------------------
+# Export variables
+SET(_targets ndicapi)
+
+# --------------------------------------------------------------------------
+# Configure options
+OPTION(ndicapi_BUILD_APPLICATIONS "Build applications." OFF)
+
+# --------------------------------------------------------------------------
+# Configure library
 SET(${PROJECT_NAME}_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -76,8 +86,13 @@ ELSE()
   SET(${PROJECT_NAME}_STATIC ON)
 ENDIF()
 
-export(TARGETS
-  ndicapi
+IF(ndicapi_BUILD_APPLICATIONS)
+  ADD_EXECUTABLE(ndiBasicExample Applications/ndiBasicExample.cxx)
+  TARGET_LINK_LIBRARIES(ndiBasicExample PUBLIC ndicapi)
+  LIST(APPEND _targets ndiBasicExample)
+ENDIF()
+
+export(TARGETS ${_targets}
   FILE ${ndicapi_TARGETS_FILE}
   )
 
