@@ -46,6 +46,8 @@ POSSIBILITY OF SUCH DAMAGES.
   #define CBR_921600 921600
 #endif
 
+#include "ndicapi.h"
+
 //----------------------------------------------------------------------------
 // Some static variables to keep track of which ports are open, so that
 // we can restore the comm parameters (baud rate etc) when they are closed.
@@ -364,7 +366,7 @@ ndicapiExport int ndiSerialWrite(HANDLE serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
+ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfBytesToRead, bool isBinary, int* errorCode)
 {
   int totalNumberOfBytesRead = 0;
   int totalNumberOfBytesToRead = numberOfBytesToRead;
@@ -394,6 +396,14 @@ ndicapiExport int ndiSerialRead(HANDLE serial_port, char* reply, int numberOfByt
     if (!isBinary && reply[totalNumberOfBytesRead - 1] == '\r'       /* done when carriage return received (ASCII) or when ERROR... received (binary)*/
         || isBinary && strncmp(reply, "ERROR", 5) == 0 && reply[totalNumberOfBytesRead - 1] == '\r')
     {
+      if (strncmp(reply, "ERROR", 5) == 0)
+      {
+        unsigned long err = ndiHexToUnsignedLong(&reply[5], 2);
+        if (errorCode != NULL)
+        {
+          *errorCode = static_cast<int>(err);
+        }
+      }
       break;
     }
 
