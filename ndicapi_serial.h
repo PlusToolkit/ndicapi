@@ -239,7 +239,7 @@ ndicapiExport int ndiSerialWrite(NDIFileHandle serial_port, const char* text, in
   read was incomplete and there are more characters waiting to
   be read.
 */
-ndicapiExport int ndiSerialRead(NDIFileHandle serial_port, char* reply, int n, bool isBinary);
+ndicapiExport int ndiSerialRead(NDIFileHandle serial_port, char* reply, int n, bool isBinary, int* errorCode);
 
 /*! \ingroup NDISerial
   Sleep for the specified number of milliseconds.  The actual sleep time

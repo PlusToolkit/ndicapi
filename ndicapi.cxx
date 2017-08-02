@@ -852,8 +852,9 @@ ndicapiExport int ndiSerialProbe(const char* device)
   ndiSerialFlush(serial_port, NDI_IOFLUSH);
 
   // try to initialize ndicapi
+  int errorCode;
   if (ndiSerialWrite(serial_port, "INIT:E3A5\r", 10) < 10 || ndiSerialSleep(serial_port, 100) < 0 ||
-      ndiSerialRead(serial_port, init_reply, 16, false) <= 0 || strncmp(init_reply, "OKAYA896\r", 9) != 0)
+      ndiSerialRead(serial_port, init_reply, 16, false, &errorCode) <= 0 || strncmp(init_reply, "OKAYA896\r", 9) != 0)
   {
     // increase timeout to 5 seconds for reset
     ndiSerialTimeout(serial_port, 5000);
@@ -867,7 +868,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
       return NDI_BAD_COMM;
     }
 
-    n = ndiSerialRead(serial_port, init_reply, 16, false);
+    n = ndiSerialRead(serial_port, init_reply, 16, false, &errorCode);
     if (n < 0)
     {
       ndiSerialClose(serial_port);
@@ -900,7 +901,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
     }
 
     ndiSerialSleep(serial_port, 100);
-    n = ndiSerialRead(serial_port, init_reply, 16, false);
+    n = ndiSerialRead(serial_port, init_reply, 16, false, &errorCode);
     if (n < 0)
     {
       ndiSerialClose(serial_port);
@@ -923,11 +924,28 @@ ndicapiExport int ndiSerialProbe(const char* device)
   // Example exchange with Polaris Vicra
   //>> GETINFO:Features.Firmware.Version0492
   //<< Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision number99A8
-  if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", 10) < 10 ||
-      (n = ndiSerialRead(serial_port, reply, 1023, false)) < 84)
+  if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", 74) != 74)
   {
     ndiSerialClose(serial_port);
     return NDI_PROBE_FAIL;
+  }
+    
+  if (ndiSerialRead(serial_port, reply, 1023, false, &errorCode) < 84)
+  {
+    if (strncmp(reply, "ERROR", 5) == 0)
+    {
+      if (ndiSerialWrite(serial_port, "VER:065EE\r", 10) < 10 ||
+        (n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode)) < 7)
+      {
+        ndiSerialClose(serial_port);
+        return NDI_PROBE_FAIL;
+      }
+    }
+    else
+    {
+      ndiSerialClose(serial_port);
+      return NDI_PROBE_FAIL;
+    }
   }
 
   // restore things back to the way they were
@@ -2329,6 +2347,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   char* command;
   char* reply;
   char* commandReply;
+  int errorCode;
 
   command = api->Command;       // text sent to ndicapi
   reply = api->Reply;     // text received from ndicapi
@@ -2362,7 +2381,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       ndiSerialComm(api->SerialDevice, 9600, "8N1", 0);
       ndiSerialFlush(api->SerialDevice, NDI_IOFLUSH);
       ndiSerialBreak(api->SerialDevice);
-      bytes = ndiSerialRead(api->SerialDevice, reply, 2047, false);
+      bytes = ndiSerialRead(api->SerialDevice, reply, 2047, false, &errorCode);
     }
     else
     {
@@ -2541,12 +2560,11 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     {
       if (api->SerialDevice != NDI_INVALID_HANDLE)
       {
-        bytes = ndiSerialRead(api->SerialDevice, reply, 2047, isBinary);
+        bytes = ndiSerialRead(api->SerialDevice, reply, 2047, isBinary, &errcode);
       }
       else
       {
-        int errorCode;
-        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary, &errorCode);
+        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary, &errcode);
       }
       if (bytes < 0)
       {
@@ -3914,7 +3932,7 @@ static void* ndiThreadFunc(void* userdata)
     {
       if (pol->SerialDevice != NDI_INVALID_HANDLE)
       {
-        m = ndiSerialRead(pol->SerialDevice, reply, 2047, pol->IsThreadedCommandBinary);
+        m = ndiSerialRead(pol->SerialDevice, reply, 2047, pol->IsThreadedCommandBinary, &errorCode);
       }
       else
       {

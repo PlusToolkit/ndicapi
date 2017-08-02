@@ -329,7 +329,7 @@ ndicapiExport int ndiSerialWrite(int serial_port, const char* text, int n)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialRead(int serial_port, char* reply, int numberOfBytesToRead, bool isBinary)
+ndicapiExport int ndiSerialRead(int serial_port, char* reply, int numberOfBytesToRead, bool isBinary, int* errorCode)
 {
   int totalNumberOfBytesRead = 0;
   int totalNumberOfBytesToRead = numberOfBytesToRead;
