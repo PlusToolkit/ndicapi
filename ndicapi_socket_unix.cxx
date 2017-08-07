@@ -59,8 +59,8 @@ ndicapiExport bool ndiSocketOpen(const char* hostname, int port, NDISocketHandle
 //----------------------------------------------------------------------------
 ndicapiExport void ndiSocketClose(NDISocketHandle socket)
 {
-  shutdown(sock, 2);
-  close(sock);
+  shutdown(socket, 2);
+  close(socket);
 }
 
 //----------------------------------------------------------------------------
