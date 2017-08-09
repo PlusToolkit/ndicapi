@@ -791,28 +791,52 @@ ndicapiExport char* ndiSerialDeviceName(int i)
   // Linux/Unix variants
 
 #ifdef NDI_DEVICE0
-  if (i == 0) { return NDI_DEVICE0; }
+  if (i == 0)
+  {
+    return NDI_DEVICE0;
+  }
 #endif
 #ifdef NDI_DEVICE1
-  if (i == 1) { return NDI_DEVICE1; }
+  if (i == 1)
+  {
+    return NDI_DEVICE1;
+  }
 #endif
 #ifdef NDI_DEVICE2
-  if (i == 2) { return NDI_DEVICE2; }
+  if (i == 2)
+  {
+    return NDI_DEVICE2;
+  }
 #endif
 #ifdef NDI_DEVICE3
-  if (i == 3) { return NDI_DEVICE3; }
+  if (i == 3)
+  {
+    return NDI_DEVICE3;
+  }
 #endif
 #ifdef NDI_DEVICE4
-  if (i == 4) { return NDI_DEVICE4; }
+  if (i == 4)
+  {
+    return NDI_DEVICE4;
+  }
 #endif
 #ifdef NDI_DEVICE5
-  if (i == 5) { return NDI_DEVICE5; }
+  if (i == 5)
+  {
+    return NDI_DEVICE5;
+  }
 #endif
 #ifdef NDI_DEVICE6
-  if (i == 6) { return NDI_DEVICE6; }
+  if (i == 6)
+  {
+    return NDI_DEVICE6;
+  }
 #endif
 #ifdef NDI_DEVICE7
-  if (i == 7) { return NDI_DEVICE7; }
+  if (i == 7)
+  {
+    return NDI_DEVICE7;
+  }
 #endif
 
   return NULL;
@@ -923,19 +947,19 @@ ndicapiExport int ndiSerialProbe(const char* device)
   ndiSerialSleep(serial_port, 100);
   // Example exchange with Polaris Vicra
   //>> GETINFO:Features.Firmware.Version0492
-  //<< Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision number99A8
-  if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", 74) != 74)
+  if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", strlen("GETINFO:Features.Firmware.Version0492\r")) != strlen("GETINFO:Features.Firmware.Version0492\r"))
   {
     ndiSerialClose(serial_port);
     return NDI_PROBE_FAIL;
   }
-    
-  if (ndiSerialRead(serial_port, reply, 1023, false, &errorCode) < 84)
+
+  //<< Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision number99A8
+  if (ndiSerialRead(serial_port, reply, 1023, false, &errorCode) < strlen("Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision numberAAAA"))
   {
     if (strncmp(reply, "ERROR", 5) == 0)
     {
       if (ndiSerialWrite(serial_port, "VER:065EE\r", 10) < 10 ||
-        (n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode)) < 7)
+          (n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode)) < 7)
       {
         ndiSerialClose(serial_port);
         return NDI_PROBE_FAIL;
