@@ -1,6 +1,56 @@
 // A simple program that connects to an NDI tracker
 #include <ndicapi.h>
 
+#include <iostream>
+#if _MSC_VER >= 1700
+  #include <vector>
+  #include <algorithm>
+  #include <future>
+#endif
+
+#if _MSC_VER >= 1700
+//----------------------------------------------------------------------------
+bool ParallelProbe(ndicapi*& outDevice)
+{
+  const int MAX_SERIAL_PORT_NUMBER = 20; // the serial port is almost surely less than this number
+  std::vector<bool> deviceExists(MAX_SERIAL_PORT_NUMBER);
+  std::fill(begin(deviceExists), end(deviceExists), false);
+  std::vector<std::future<void>> tasks;
+  for (int i = 0; i < MAX_SERIAL_PORT_NUMBER; i++)
+  {
+    std::future<void> result = std::async([i, &deviceExists]()
+    {
+      char* devicename = ndiSerialDeviceName(i);
+      if (devicename)
+      {
+        int errnum = ndiSerialProbe(devicename);
+        if (errnum == NDI_OKAY)
+        {
+          deviceExists[i] = true;
+        }
+      }
+    });
+    tasks.push_back(std::move(result));
+  }
+  for (int i = 0; i < MAX_SERIAL_PORT_NUMBER; i++)
+  {
+    tasks[i].wait();
+  }
+  for (int i = 0; i < MAX_SERIAL_PORT_NUMBER; i++)
+  {
+    // use first device found
+    if (deviceExists[i] == true)
+    {
+      char* devicename = ndiSerialDeviceName(i);
+      outDevice = ndiOpenSerial(devicename);
+      return true;
+    }
+  }
+
+  return false;
+}
+#endif
+
 struct ndicapi;
 
 int main()
@@ -8,15 +58,17 @@ int main()
   ndicapi* device(nullptr);
   char* name(nullptr);
 
+#if _MSC_VER >= 1700
+  ParallelProbe(device);
+#else
   const int MAX_SERIAL_PORTS = 20;
   for (int i = 0; i < MAX_SERIAL_PORTS; ++i)
   {
     name = ndiSerialDeviceName(i);
     int result = ndiSerialProbe(name);
-    if (result != NDI_OKAY)
+    if (result == NDI_OKAY)
     {
-      name = nullptr;
-      continue;
+      break;
     }
   }
 
@@ -24,12 +76,14 @@ int main()
   {
     device = ndiOpenSerial(name);
   }
+#endif
 
   if (device != nullptr)
   {
-    const char* reply = ndiCommand(device, "INIT");
-    if (strncmp(reply, "ERROR", strlen(reply)) == 0)
+    const char* reply = ndiCommand(device, "INIT:");
+    if (strncmp(reply, "ERROR", strlen(reply)) == 0 || ndiGetError(device) != NDI_OKAY)
     {
+      std::cerr << "Error when sending command: " << ndiErrorString(ndiGetError(device)) << std::endl;
       return EXIT_FAILURE;
     }
 
