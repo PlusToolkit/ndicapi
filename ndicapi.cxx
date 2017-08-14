@@ -171,6 +171,7 @@ struct ndicapi
   char TxPassiveStray[1052];
 
   // BX command reply data
+  unsigned short BxReplyLength;
   unsigned char BxHandleCount;
   char BxHandles[NDI_MAX_HANDLES];
   char BxHandlesStatus[NDI_MAX_HANDLES];
@@ -1672,7 +1673,7 @@ namespace
     replyIndex += 2;
 
     // Get the reply length
-    replyLength = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
+    api->BxReplyLength = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
     replyIndex += 2;
 
     // Get the CRC
@@ -3386,6 +3387,12 @@ ndicapiExport int ndiGetGXPassiveStray(ndicapi* pol, int i, double coord[3])
   coord[2] = ndiSignedToLong(&dp[14], 7) * 0.01;
 
   return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport unsigned short ndiGetBXReplyLength(ndicapi* pol)
+{
+  return pol->BxReplyLength;
 }
 
 //----------------------------------------------------------------------------

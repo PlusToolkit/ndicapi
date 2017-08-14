@@ -1314,6 +1314,16 @@ ndicapiExport int ndiGetGXNumberOfPassiveStrays(ndicapi* pol);
 ndicapiExport int ndiGetGXPassiveStray(ndicapi* pol, int i, double coord[3]);
 
 /*! \ingroup GetMethods
+Get the length of the last BX command reply
+
+\param pol       valid NDI device handle
+
+\return the number of bytes in the reply
+
+*/
+ndicapiExport unsigned short ndiGetBXReplyLength(ndicapi* pol);
+
+/*! \ingroup GetMethods
 Get the transformation for the specified port. The first four numbers are a quaternion,
 the next three numbers are the coordinates in millimeters, and the final number is a
 unitless error estimate.
