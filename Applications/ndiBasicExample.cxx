@@ -16,18 +16,20 @@ bool ParallelProbe(ndicapi*& outDevice)
   std::vector<bool> deviceExists(MAX_SERIAL_PORT_NUMBER);
   std::fill(begin(deviceExists), end(deviceExists), false);
   std::vector<std::future<void>> tasks;
+  std::mutex deviceNameMutex;
   for (int i = 0; i < MAX_SERIAL_PORT_NUMBER; i++)
   {
-    std::future<void> result = std::async([i, &deviceExists]()
+    std::future<void> result = std::async([i, &deviceNameMutex, &deviceExists]()
     {
-      char* devicename = ndiSerialDeviceName(i);
-      if (devicename)
+      std::string devName;
       {
-        int errnum = ndiSerialProbe(devicename);
-        if (errnum == NDI_OKAY)
-        {
-          deviceExists[i] = true;
-        }
+        std::lock_guard<std::mutex> guard(deviceNameMutex);
+        devName = std::string(ndiSerialDeviceName(i));
+      }
+      int errnum = ndiSerialProbe(devName.c_str());
+      if (errnum == NDI_OKAY)
+      {
+        deviceExists[i] = true;
       }
     });
     tasks.push_back(std::move(result));
