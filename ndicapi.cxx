@@ -946,16 +946,24 @@ ndicapiExport int ndiSerialProbe(const char* device)
   }
 
   ndiSerialSleep(serial_port, 100);
-  // Example exchange with Polaris Vicra
-  //>> GETINFO:Features.Firmware.Version0492
   if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", strlen("GETINFO:Features.Firmware.Version0492\r")) != strlen("GETINFO:Features.Firmware.Version0492\r"))
   {
     ndiSerialClose(serial_port);
     return NDI_PROBE_FAIL;
   }
 
-  //<< Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision number99A8
-  if (ndiSerialRead(serial_port, reply, 1023, false, &errorCode) < strlen("Features.Firmware.Version=007.000.012;3;1;0;12;;Current firmware revision numberAAAA"))
+  n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode);
+  if (n == 0)
+  {
+    ndiSerialClose(serial_port);
+    return NDI_TIMEOUT;
+  }
+  else if (n < 0)
+  {
+    ndiSerialClose(serial_port);
+    return errorCode;
+  }
+  else
   {
     if (strncmp(reply, "ERROR", 5) == 0)
     {
@@ -966,7 +974,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
         return NDI_PROBE_FAIL;
       }
     }
-    else
+    else if (strncmp(reply, "Features", strlen("Features")) != 0)
     {
       ndiSerialClose(serial_port);
       return NDI_PROBE_FAIL;
