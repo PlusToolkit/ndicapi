@@ -1661,7 +1661,6 @@ namespace
     // NDI_PASSIVE_STRAY      0x1000  /* stray passive marker reporting */
     unsigned long mode = NDI_XFORMS_AND_STATUS;
     const char* replyIndex;
-    unsigned short replyLength;
     unsigned short headerCRC;
 
     // if the BX command had a reply option, read it
