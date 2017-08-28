@@ -242,7 +242,10 @@ ndicapiExport int ndiSerialComm(HANDLE serial_port, int baud, const char* mode,
       newbaud = CBR_921600;
       break;
     case 1228739:
-      newbaud = CBR_19200;
+      newbaud = 1228739;
+      break;
+    case 230400:
+      newbaud = 230400;
       break;
     default:
       return -1;
@@ -306,9 +309,9 @@ ndicapiExport int ndiSerialComm(HANDLE serial_port, int baud, const char* mode,
     return -1;
   }
 
-  SetCommState(serial_port, &comm_settings);
+  int result = SetCommState(serial_port, &comm_settings);
 
-  return 0;
+  return result > 0 ? 0 : -1;
 }
 
 //----------------------------------------------------------------------------

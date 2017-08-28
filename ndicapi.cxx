@@ -2309,9 +2309,16 @@ namespace
     int newspeed = 9600;
     int newhand = 0;
 
-    if (command[5] >= '0' && command[5] <= '7')
+    if (command[5] >= '0' && command[5] <= '7' || command[5] == 'A')
     {
-      newspeed = convert_baud[command[5] - '0'];
+      if (command[5] != 'A')
+      {
+        newspeed = convert_baud[command[5] - '0'];
+      }
+      else
+      {
+        newspeed = 230400;
+      }
     }
     if (command[6] == '1')
     {

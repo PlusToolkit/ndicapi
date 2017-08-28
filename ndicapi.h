@@ -1858,6 +1858,7 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define  NDI_115200   5
 #define  NDI_921600   6
 #define  NDI_1228739  7
+#define  NDI_230400   10
 /*\}*/
 
 /* ndiCOMM() data bits, parity and stop bits */
