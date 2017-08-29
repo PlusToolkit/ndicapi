@@ -227,6 +227,9 @@ ndicapiExport int ndiSerialComm(int serial_port, int baud, const char mode[4], i
     case 115200:
       newbaud = B115200;
       break;
+    case 230400:
+      newbaud = B230400
+                break;
     default:
       return -1;
   }
@@ -352,9 +355,7 @@ ndicapiExport int ndiSerialComm(int serial_port, int baud, const char mode[4], i
 #endif
   }
 
-  tcsetattr(serial_port, TCSADRAIN, &t); /* set I/O information */
-
-  return 0;
+  return tcsetattr(serial_port, TCSADRAIN, &t); /* set I/O information */
 }
 
 //----------------------------------------------------------------------------

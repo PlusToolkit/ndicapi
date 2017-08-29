@@ -242,7 +242,7 @@ ndicapiExport int ndiSerialComm(HANDLE serial_port, int baud, const char* mode,
       newbaud = CBR_921600;
       break;
     case 1228739:
-      newbaud = 1228739;
+      newbaud = CBR_19200; //19.2k is aliased to 1.2Mbit in the Window's version of the NDI USB virtual com port driver
       break;
     case 230400:
       newbaud = 230400;
