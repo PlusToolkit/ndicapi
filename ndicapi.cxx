@@ -2386,7 +2386,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   char* command;
   char* reply;
   char* commandReply;
-  int errorCode;
+  int errorCode = 0;
 
   command = api->Command;       // text sent to ndicapi
   reply = api->Reply;     // text received from ndicapi
@@ -2490,8 +2490,6 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
                              command[0] == 'T' && command[1] == 'X' ||
                              command[0] == 'B' && command[1] == 'X'))
   {
-    int errcode = 0;
-
     // check that the thread is sending the GX/BX/TX command that we want
     if (strcmp(command, api->ThreadCommand) != 0)
     {
@@ -2523,12 +2521,12 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     {
       reply[bytes] = '\0';   // terminate string
     }
-    errcode = api->ThreadErrorCode;
+    errorCode = api->ThreadErrorCode;
     ndiMutexUnlock(api->ThreadBufferMutex);
 
-    if (errcode != 0)
+    if (errorCode != 0)
     {
-      ndiSetError(api, errcode);
+      ndiSetError(api, errorCode);
       return commandReply;
     }
   }
@@ -2536,7 +2534,6 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   //   send the command directly to the Measurement System and get a reply
   else
   {
-    int errcode = 0;
     bool isThreadMode = api->IsThreadedMode;
 
     if (isThreadMode && api->IsTracking)
@@ -2573,46 +2570,43 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     }
 
     // send the command to the Measurement System
-    if (errcode == 0)
+    if (api->SerialDevice != NDI_INVALID_HANDLE)
     {
-      if (api->SerialDevice != NDI_INVALID_HANDLE)
-      {
-        bytes = ndiSerialWrite(api->SerialDevice, command, i);
-      }
-      else
-      {
-        bytes = ndiSocketWrite(api->Socket, command, i);
-      }
-      if (bytes < 0)
-      {
-        errcode = NDI_WRITE_ERROR;
-      }
-      else if (bytes < i)
-      {
-        errcode = NDI_TIMEOUT;
-      }
+      bytes = ndiSerialWrite(api->SerialDevice, command, i);
+    }
+    else
+    {
+      bytes = ndiSocketWrite(api->Socket, command, i);
+    }
+    if (bytes < 0)
+    {
+      errorCode = NDI_WRITE_ERROR;
+    }
+    else if (bytes < i)
+    {
+      errorCode = NDI_TIMEOUT;
     }
 
     // read the reply from the Measurement System
     bytes = 0;
-    if (errcode == 0)
+    if (errorCode == 0)
     {
       if (api->SerialDevice != NDI_INVALID_HANDLE)
       {
-        bytes = ndiSerialRead(api->SerialDevice, reply, 2047, isBinary, &errcode);
+        bytes = ndiSerialRead(api->SerialDevice, reply, 2047, isBinary, &errorCode);
       }
       else
       {
-        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary, &errcode);
+        bytes = ndiSocketRead(api->Socket, reply, 2047, isBinary, &errorCode);
       }
       if (bytes < 0)
       {
-        errcode = NDI_READ_ERROR;
+        errorCode = NDI_READ_ERROR;
         bytes = 0;
       }
       else if (bytes == 0)
       {
-        errcode = NDI_TIMEOUT;
+        errorCode = NDI_TIMEOUT;
       }
       if (!isBinary)
       {
@@ -2626,10 +2620,9 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
       ndiMutexUnlock(api->ThreadMutex);
     }
 
-    if (errcode != 0)
+    if (errorCode != 0)
     {
-      ndiSetError(api, errcode);
-      return commandReply;
+      ndiSetError(api, errorCode);
     }
   }
 
@@ -2660,6 +2653,12 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   {
     // terminate command_reply before the CRC
     commandReply[i] = '\0';
+  }
+
+  if (errorCode != 0)
+  {
+    // Any above errors are caught here and returned after the command has had its CRC stripped
+    return commandReply;
   }
 
   if (!isBinary)
