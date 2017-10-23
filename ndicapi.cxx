@@ -1606,7 +1606,7 @@ namespace
     if (mode & NDI_PASSIVE_STRAY)
     {
       // get the number of strays
-      strayCount = (int)ndiSignedToLong(commandReply, 3);
+      strayCount = (int)ndiHexToUnsignedLong(commandReply, 2);
       for (j = 0; j < 2 && *commandReply >= ' '; j++)
       {
         commandReply++;
@@ -3124,7 +3124,7 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3])
   }
 
   n = pol->TxPassiveStrayCount;
-  dp += 3;
+  //dp += 3;
   if (n < 0)
   {
     return NDI_MISSING;
