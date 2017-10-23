@@ -1602,7 +1602,10 @@ namespace
     pol->TxHandleCount = handleCount;
 
     // get all the passive stray information
-    // this will be a maximum of 3 + 13 + 50*3*7 = 1066 bytes
+    // this will be a maximum of 2 + ceil(numMarkers*0.5) + Y
+    // where Y is
+    //   0800 not used: 21 * numMarkers inside characterized measurement volume
+    //   0800 used: 21 * numMarkers
     if (mode & NDI_PASSIVE_STRAY)
     {
       // get the number of strays
@@ -3124,7 +3127,6 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3])
   }
 
   n = pol->TxPassiveStrayCount;
-  //dp += 3;
   if (n < 0)
   {
     return NDI_MISSING;
