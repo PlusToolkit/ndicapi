@@ -2721,7 +2721,6 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3])
   }
 
   n = pol->TxPassiveStrayCount;
-  //dp += 3;
   if (n < 0)
   {
     return NDI_MISSING;
