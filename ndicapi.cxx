@@ -1740,7 +1740,7 @@ namespace
         api->BxPortStatus[i] = (int)replyIndex[0] | (int)replyIndex[1] << 8 | (int)replyIndex[2] << 16 | (int)replyIndex[3] << 24;
         replyIndex += 4;
         // 4 bytes frame number
-        api->BxFrameNumber[i] = (unsigned int)replyIndex[0] | (unsigned int)replyIndex[1] << 8 | (unsigned int)replyIndex[2] << 16 | (unsigned int)replyIndex[3] << 24;
+        api->BxFrameNumber[i] = (unsigned char)replyIndex[0] | (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[2] << 16 | (unsigned char)replyIndex[3] << 24;
         replyIndex += 4;
       }
 
@@ -2626,6 +2626,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
     if (errorCode != 0)
     {
       ndiSetError(api, errorCode);
+      return commandReply;
     }
   }
 
