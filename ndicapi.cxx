@@ -881,8 +881,8 @@ ndicapiExport int ndiSerialProbe(const char* device)
   if (ndiSerialWrite(serial_port, "INIT:E3A5\r", 10) < 10 || ndiSerialSleep(serial_port, 100) < 0 ||
       ndiSerialRead(serial_port, init_reply, 16, false, &errorCode) <= 0 || strncmp(init_reply, "OKAYA896\r", 9) != 0)
   {
-    // increase timeout to 5 seconds for reset
-    ndiSerialTimeout(serial_port, 5000);
+    // increase timeout to 7 seconds for reset
+    ndiSerialTimeout(serial_port, 7000);
 
     // init failed: flush, reset, and try again
     ndiSerialFlush(serial_port, NDI_IOFLUSH);
