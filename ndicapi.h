@@ -1092,7 +1092,7 @@ ndicapiExport int ndiGetTXSingleStray(ndicapi* pol, int ph, double coord[3]);
   Get the number of passive stray markers detected.
 
   \param pol       valid NDI device handle
-  \return          a number between 0 and 20
+  \return          a number between 0 and 50
 
   The passive stray marker coordinates are updated when a TX command
   is sent with the NDI_PASSIVE_STRAY (0x1000) bit set in the reply mode.
@@ -1104,7 +1104,7 @@ ndicapiExport int ndiGetTXNumberOfPassiveStrays(ndicapi* pol);
   supplied array.
 
   \param pol       valid NDI device handle
-  \param i         a number between 0 and 19
+  \param i         a number between 0 and 49
   \param coord     array to hold the coordinates
   \return          one of:
   - NDI_OKAY - information was returned in coord

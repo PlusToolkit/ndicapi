@@ -3132,9 +3132,9 @@ ndicapiExport int ndiGetTXPassiveStray(ndicapi* pol, int i, double coord[3])
   {
     return NDI_MISSING;
   }
-  if (n > 20)
+  if (n > 50)
   {
-    n = 20;
+    n = 50;
   }
 
   if (i < 0 || i >= n)
