@@ -61,6 +61,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 /*! \ingroup NDISerial
   \typedef NDIFileHandle
   The serial port handle is a platform-specific type, for which we use
@@ -68,31 +69,38 @@ extern "C" {
 */
 
 #ifdef _WIN32
+
 #define _WINSOCKAPI_
 #include <windows.h>
 typedef HANDLE NDIFileHandle;
 #define NDI_INVALID_HANDLE INVALID_HANDLE_VALUE
 
-#elif defined(unix) || defined(__unix__) || defined(__APPLE__)
+#elif defined(linux) || defined(__linux__)
 
 typedef int NDIFileHandle;
 #define NDI_INVALID_HANDLE -1
 
-#if defined(linux) || defined(__linux__)
-#define NDI_NUMBER_OF_DEVICES 7
 #define NDI_DEVICE0    "/dev/ttyS0"
 #define NDI_DEVICE1    "/dev/ttyS1"
 #define NDI_DEVICE2    "/dev/ttyUSB0"
 #define NDI_DEVICE3    "/dev/ttyUSB1"
 #define NDI_DEVICE4    "/dev/ttyUSB2"
 #define NDI_DEVICE5    "/dev/ttyUSB3"
-#define NDI_DEVICE6     "/dev/ttyUSB4"
+#define NDI_DEVICE6    "/dev/ttyUSB4"
 #define NDI_DEVICE7    "/dev/ttyUSB5"
 
 #elif defined(__APPLE__)
-#define NDI_NUMBER_OF_DEVICES 0
+
+typedef int NDIFileHandle;
+#define NDI_INVALID_HANDLE -1
+
+
+
 #elif defined(sgi)
-#define NDI_NUMBER_OF_DEVICES 4
+
+typedef int NDIFileHandle;
+#define NDI_INVALID_HANDLE -1
+
 #define NDI_DEVICE0    "/dev/ttyd1"
 #define NDI_DEVICE1    "/dev/ttyd2"
 #define NDI_DEVICE2    "/dev/ttyd3"
@@ -101,21 +109,16 @@ typedef int NDIFileHandle;
 #define NDI_DEVICE5    "/dev/ttyd6"
 #define NDI_DEVICE6    "/dev/ttyd7"
 #define NDI_DEVICE7    "/dev/ttyd8"
-#else
-#define NDI_NUMBER_OF_DEVICES 2
-#define NDI_DEVICE0    "/dev/ttya"
-#define NDI_DEVICE1    "/dev/ttyb"
-#endif
 
 #elif defined(macintosh)
 
 typedef long NDIFileHandle;
 #define NDI_INVALID_HANDLE -1
+
 /* macros to extract input and output file handles */
 #define output_file(serial_port) ((short)((serial_port & 0xff00) >> 16));
 #define input_file(serial_port) ((short)((serial_port & 0x00ff) >> 0));
 
-#define NDI_NUMBER_OF_DEVICES 2
 #define NDI_DEVICE0    "\p.A"
 #define NDI_DEVICE1    "\p.B"
 
