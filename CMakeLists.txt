@@ -55,18 +55,21 @@ IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   )
 ENDIF()
 
-FIND_PACKAGE(PythonInterp QUIET)
-FIND_PACKAGE(PythonLibs QUIET)
-IF(PYTHONLIBS_FOUND)
-  IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
-    MESSAGE("Only python 2 wrapping is supported at this time.")
-  ELSE()
-    LIST(APPEND ${PROJECT_NAME}_SRCS
-      ndicapimodule.cxx
-      )
-    LIST(APPEND ${PROJECT_NAME}_INCLUDE_DIRS
-      ${PYTHON_INCLUDE_DIRS}
-      )
+OPTION(CONFIRM_BUILD_PYTHON "Ensure the python module will build." OFF)
+IF(CONFIRM_BUILD_PYTHON)
+  FIND_PACKAGE(PythonInterp QUIET)
+  FIND_PACKAGE(PythonLibs QUIET)
+  IF(PYTHONLIBS_FOUND)
+    IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
+      MESSAGE("Only python 2 wrapping is supported at this time.")
+    ELSE()
+      LIST(APPEND ${PROJECT_NAME}_SRCS
+        ndicapimodule.cxx
+        )
+      LIST(APPEND ${PROJECT_NAME}_INCLUDE_DIRS
+        ${PYTHON_INCLUDE_DIRS}
+        )
+    ENDIF()
   ENDIF()
 ENDIF()
 
