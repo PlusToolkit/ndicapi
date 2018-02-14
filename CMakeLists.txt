@@ -44,9 +44,6 @@ SET(${PROJECT_NAME}_SRCS
   ndicapi_thread.cxx
   ndicapi_socket.cxx
   )
-SET(${PROJECT_NAME}_LIBS
-  ""
-  )
 
 IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   SET(${PROJECT_NAME}_HDRS
@@ -58,13 +55,13 @@ IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   )
 ENDIF()
 
-OPTION(CONFIRM_BUILD_PYTHON "Ensure the python module will build." OFF)
-IF(CONFIRM_BUILD_PYTHON)
+OPTION(BUILD_PYTHON "Ensure the python module will build." OFF)
+IF(BUILD_PYTHON)
   FIND_PACKAGE(PythonInterp QUIET)
   FIND_PACKAGE(PythonLibs QUIET)
   IF(PYTHONLIBS_FOUND)
     IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
-      MESSAGE("Only python 2 wrapping is supported at this time.")
+      MESSAGE("Only python2 wrapping is supported at this time.")
     ELSE()
       LIST(APPEND ${PROJECT_NAME}_SRCS
         ndicapimodule.cxx
@@ -77,18 +74,23 @@ IF(CONFIRM_BUILD_PYTHON)
         )
     ENDIF()
   ENDIF()
+
+  CONFIGURE_FILE(
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+    )
 ENDIF()
 
 FIND_PACKAGE(Threads)
 LIST(APPEND ${PROJECT_NAME}_LIBS
   ${CMAKE_THREAD_LIBS_INIT}
-)
+  )
 
 # macro for CXX_STANDARD
 SET(NDICAPI_CXX_STANDARD 11)
 
 ADD_LIBRARY(${PROJECT_NAME} ${${PROJECT_NAME}_SRCS} ${${PROJECT_NAME}_HDRS})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${${PROJECT_NAME}_LIBS})
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_LIBS})
 SET_PROPERTY(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD ${NDICAPI_CXX_STANDARD})
 IF(NOT WIN32)
   SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
@@ -97,18 +99,22 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_INCLUDE_DIRS
 
 IF(MSVC)
   target_link_libraries(${PROJECT_NAME} PUBLIC wsock32 ws2_32)
-ELSE()
-
 ENDIF()
 
 INSTALL(TARGETS ${PROJECT_NAME} EXPORT ndicapi
-  RUNTIME DESTINATION bin CONFIGURATIONS Release COMPONENT RuntimeLibraries
-  LIBRARY DESTINATION lib CONFIGURATIONS Release COMPONENT RuntimeLibraries
-  ARCHIVE DESTINATION lib CONFIGURATIONS Release COMPONENT Development
+  RUNTIME DESTINATION bin COMPONENT RuntimeLibraries
+  LIBRARY DESTINATION lib COMPONENT RuntimeLibraries
+  ARCHIVE DESTINATION lib COMPONENT Development
   )
 INSTALL(FILES ${${PROJECT_NAME}_HDRS}
-  DESTINATION include CONFIGURATIONS Release COMPONENT Development
+  DESTINATION include COMPONENT Development
   )
+GET_TARGET_PROPERTY(_library_type ndicapi TYPE)
+IF(${_library_type} STREQUAL SHARED_LIBRARY AND MSVC)
+  INSTALL(FILES "$<TARGET_PDB_FILE:ndicapi>" OPTIONAL
+    DESTINATION "bin" COMPONENT RuntimeLibraries
+    )
+ENDIF()
 
 #-----------------------------------------------------------------------------
 # CMake target details
