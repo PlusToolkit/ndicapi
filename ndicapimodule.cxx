@@ -1416,7 +1416,7 @@ extern "C" {
 #define Py_NDICharMacro(a) \
      PyDict_SetItemString(dict, #a, _PyString_FromChar(a))
 
-void ndicapiExport initndicapi()
+void ndicapiExport initpyndicapi()
 {
   PyObject* module;
   PyObject* dict;
