@@ -30,7 +30,7 @@ To build a Python (http://www.python.org) interface to this library
 ```sh
 python setup.py build
 python setup.py install
->>> import ndicapi
+>>> import pyndicapi
 ```
 
 ## Contents
