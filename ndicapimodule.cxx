@@ -593,7 +593,7 @@ static PyObject* Py_ndiClose(PyObject* module, PyObject* args)
 
   if (PyArg_ParseTuple(args, "O&:plClose", &_ndiConverter, &pol))
   {
-    ndiSerialClose(pol);
+    ndiSerialClose(pol->SerialDevice);
     Py_INCREF(Py_None);
     return Py_None;
   }
