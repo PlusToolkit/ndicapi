@@ -8,8 +8,9 @@ module1 = Extension('pyndicapi',
 'ndicapi_serial.cxx',
 'ndicapi_thread.cxx',
 'ndicapimodule.cxx',
-])
-
+],
+libraries = ['ndicapi'],
+                   )
 setup (name = 'pyndicapi',
        version = '3.2',
        description = 'This package allows interfacing with NDI tracking devices',
