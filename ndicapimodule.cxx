@@ -1424,7 +1424,7 @@ void ndicapiExport initndicapi()
   PyNdicapiType.ob_type = &PyType_Type;
   PyNDIBitfield_Type.ob_type = &PyType_Type;
 
-  module = Py_InitModule("ndicapi", NdicapiMethods);
+  module = Py_InitModule("pyndicapi", NdicapiMethods);
   dict = PyModule_GetDict(module);
 
   Py_NDIConstantMacro(NDICAPI_MAJOR_VERSION);
