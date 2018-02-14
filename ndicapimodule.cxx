@@ -115,25 +115,20 @@ typedef struct
 PyObject* PyNDIBitfield_FromUnsignedLong(unsigned long ival);
 
 static void
-bitfield_dealloc(v)
-PyIntObject* v;
+bitfield_dealloc(PyIntObject* v)
 {
   PyMem_DEL(v);
 }
 
 static int
-bitfield_print(v, fp, flags)
-PyIntObject* v;
-FILE* fp;
-int flags; /* Not used but required by interface */
+bitfield_print(PyIntObject* v, FILE* fp, int flags/* Not used but required by interface */)
 {
   fprintf(fp, "0x%lX", v->ob_ival);
   return 0;
 }
 
 static PyObject*
-bitfield_repr(v)
-PyIntObject* v;
+bitfield_repr(PyIntObject* v)
 {
   char buf[20];
   sprintf(buf, "0x%lX", v->ob_ival);
@@ -141,8 +136,7 @@ PyIntObject* v;
 }
 
 static int
-bitfield_compare(v, w)
-PyIntObject* v, *w;
+bitfield_compare(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long i = v->ob_ival;
   register unsigned long j = w->ob_ival;
@@ -150,23 +144,19 @@ PyIntObject* v, *w;
 }
 
 static int
-bitfield_nonzero(v)
-PyIntObject* v;
+bitfield_nonzero(PyIntObject* v)
 {
   return v->ob_ival != 0;
 }
 
 static PyObject*
-bitfield_invert(v)
-PyIntObject* v;
+bitfield_invert(PyIntObject* v)
 {
   return PyNDIBitfield_FromUnsignedLong(~v->ob_ival);
 }
 
 static PyObject*
-bitfield_lshift(v, w)
-PyIntObject* v;
-PyIntObject* w;
+bitfield_lshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -190,9 +180,7 @@ PyIntObject* w;
 }
 
 static PyObject*
-bitfield_rshift(v, w)
-PyIntObject* v;
-PyIntObject* w;
+bitfield_rshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -225,9 +213,7 @@ PyIntObject* w;
 }
 
 static PyObject*
-bitfield_and(v, w)
-PyIntObject* v;
-PyIntObject* w;
+bitfield_and(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -236,9 +222,7 @@ PyIntObject* w;
 }
 
 static PyObject*
-bitfield_xor(v, w)
-PyIntObject* v;
-PyIntObject* w;
+bitfield_xor(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -247,9 +231,7 @@ PyIntObject* w;
 }
 
 static PyObject*
-bitfield_or(v, w)
-PyIntObject* v;
-PyIntObject* w;
+bitfield_or(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -258,9 +240,7 @@ PyIntObject* w;
 }
 
 static int
-bitfield_coerce(pv, pw)
-PyObject** pv;
-PyObject** pw;
+bitfield_coerce(PyObject** pv, PyObject** pw)
 {
   if (PyInt_Check(*pw))
   {
@@ -278,29 +258,25 @@ PyObject** pw;
 }
 
 static PyObject*
-bitfield_int(v)
-PyIntObject* v;
+bitfield_int(PyIntObject* v)
 {
   return PyInt_FromLong((v -> ob_ival));
 }
 
 static PyObject*
-bitfield_long(v)
-PyIntObject* v;
+bitfield_long(PyIntObject* v)
 {
   return PyLong_FromLong((v -> ob_ival));
 }
 
 static PyObject*
-bitfield_float(v)
-PyIntObject* v;
+bitfield_float(PyIntObject* v)
 {
   return PyFloat_FromDouble((double)(v -> ob_ival));
 }
 
 static PyObject*
-bitfield_oct(v)
-PyIntObject* v;
+bitfield_oct(PyIntObject* v)
 {
   char buf[100];
   long x = v -> ob_ival;
@@ -312,8 +288,7 @@ PyIntObject* v;
 }
 
 static PyObject*
-bitfield_hex(v)
-PyIntObject* v;
+bitfield_hex(PyIntObject* v)
 {
   char buf[100];
   long x = v -> ob_ival;
