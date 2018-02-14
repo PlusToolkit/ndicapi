@@ -55,6 +55,24 @@ IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   )
 ENDIF()
 
+OPTION(CONFIRM_BUILD_PYTHON "Ensure the python module will build." OFF)
+IF(CONFIRM_BUILD_PYTHON)
+  FIND_PACKAGE(PythonInterp QUIET)
+  FIND_PACKAGE(PythonLibs QUIET)
+  IF(PYTHONLIBS_FOUND)
+    IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
+      MESSAGE("Only python 2 wrapping is supported at this time.")
+    ELSE()
+      LIST(APPEND ${PROJECT_NAME}_SRCS
+        ndicapimodule.cxx
+        )
+      LIST(APPEND ${PROJECT_NAME}_INCLUDE_DIRS
+        ${PYTHON_INCLUDE_DIRS}
+        )
+    ENDIF()
+  ENDIF()
+ENDIF()
+
 ADD_LIBRARY(${PROJECT_NAME} ${${PROJECT_NAME}_SRCS} ${${PROJECT_NAME}_HDRS})
 IF(NOT WIN32)
   SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC")
@@ -104,6 +122,9 @@ CONFIGURE_FILE(ndicapiConfigVersion.cmake.in
 
 CONFIGURE_FILE(ndicapiExport.h.in
   "${CMAKE_BINARY_DIR}/ndicapiExport.h" @ONLY)
+# Enable building of python module, configure the export file in the source directory as well
+CONFIGURE_FILE(ndicapiExport.h.in
+  "${CMAKE_SOURCE_DIR}/ndicapiExport.h" @ONLY)
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)

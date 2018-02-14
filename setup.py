@@ -1,16 +1,16 @@
 from distutils.core import setup, Extension
 
 
-module1 = Extension('polaris',
+module1 = Extension('ndicapi',
                     sources = [
-'ndicapi.c',
-'ndicapi_math.c',
-'ndicapi_serial.c',
-'ndicapi_thread.c',
-'polarismodule.c',
+'ndicapi.cxx',
+'ndicapi_math.cxx',
+'ndicapi_serial.cxx',
+'ndicapi_thread.cxx',
+'ndicapimodule.cxx',
 ])
 
-setup (name = 'polaris',
+setup (name = 'ndicapi',
        version = '3.2',
-       description = 'This is a demo package',
+       description = 'This package allows interfacing with NDI tracking devices',
        ext_modules = [module1])

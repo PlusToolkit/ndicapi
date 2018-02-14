@@ -1,0 +1,1634 @@
+// Local includes
+#include "ndicapi.h"
+#include "ndicapi_math.h"
+
+// Export includes
+#include "ndicapiExport.h"
+
+// Python includes
+#include <Python.h>
+
+//--------------------------------------------------------------
+// PyNdicapi structure
+typedef struct
+{
+  PyObject_HEAD
+  ndicapi* pl_ndicapi;
+} PyNdicapi;
+
+static void PyNdicapi_PyDelete(PyObject* self)
+{
+  ndicapi* pol;
+
+  pol = ((PyNdicapi*)self)->pl_ndicapi;
+  ndiCloseSerial(pol);
+  PyMem_DEL(self);
+}
+
+static char* PyNdicapi_PrintHelper(PyObject* self, char* space)
+{
+  ndicapi* pol;
+
+  pol = ((PyNdicapi*)self)->pl_ndicapi;
+
+  sprintf(space, "<polaris object %p, %s>", (void*)pol, ndiGetSerialDeviceName(pol));
+
+  return space;
+}
+
+static int PyNdicapi_PyPrint(PyObject* self, FILE* fp, int dummy)
+{
+  char space[256];
+
+  PyNdicapi_PrintHelper(self, space);
+  fprintf(fp, "%s", space);
+  return 0;
+}
+
+static PyObject* PyNdicapi_PyString(PyObject* self)
+{
+  char space[256];
+
+  PyNdicapi_PrintHelper(self, space);
+  return PyString_FromString(space);
+}
+
+static PyObject* PyNdicapi_PyRepr(PyObject* self)
+{
+  char space[256];
+
+  PyNdicapi_PrintHelper(self, space);
+  return PyString_FromString(space);
+}
+
+static PyObject* PyNdicapi_PyGetAttr(PyObject* self, char* name)
+{
+  ndicapi* pol;
+
+  pol = ((PyNdicapi*)self)->pl_ndicapi;
+  PyErr_SetString(PyExc_AttributeError, name);
+  return NULL;
+}
+
+static PyTypeObject PyNdicapiType =
+{
+  PyObject_HEAD_INIT(NULL) /* (&PyType_Type) */
+  0,
+  "ndicapi",                                                  /* tp_name */
+  sizeof(PyNdicapi),                                          /* tp_basicsize */
+  0,                                                          /* tp_itemsize */
+  (destructor)PyNdicapi_PyDelete,                             /* tp_dealloc */
+  (printfunc)PyNdicapi_PyPrint,                               /* tp_print */
+  (getattrfunc)PyNdicapi_PyGetAttr,                           /* tp_getattr */
+  0,                                                          /* tp_setattr */
+  (cmpfunc)0,                                                 /* tp_compare */
+  (reprfunc)PyNdicapi_PyRepr,                                 /* tp_repr */
+  0,                                                          /* tp_as_number  */
+  0,                                                          /* tp_as_sequence */
+  0,                                                          /* tp_as_mapping */
+  (hashfunc)0,                                                /* tp_hash */
+  (ternaryfunc)0,                                             /* tp_call */
+  (reprfunc)PyNdicapi_PyString,                               /* tp_string */
+  (getattrofunc)0,                                            /* tp_getattro */
+  (setattrofunc)0,                                            /* tp_setattro */
+  0,                                                          /* tp_as_buffer */
+  0,                                                          /* tp_flags */
+  "ndicapi: interface to an NDICAPI serial tracking system"   /* tp_doc */
+};
+
+int PyNdicapi_Check(PyObject* obj)
+{
+  return (obj->ob_type == &PyNdicapiType);
+}
+
+/*=================================================================
+  bitfield type: this code is a ripoff of the python integer type
+  that prints itself as a hexadecimal value
+*/
+
+typedef struct
+{
+  PyObject_HEAD
+  unsigned long ob_ival;
+} PyNDIBitfieldObject;
+
+PyObject* PyNDIBitfield_FromUnsignedLong(unsigned long ival);
+
+static void
+bitfield_dealloc(v)
+PyIntObject* v;
+{
+  PyMem_DEL(v);
+}
+
+static int
+bitfield_print(v, fp, flags)
+PyIntObject* v;
+FILE* fp;
+int flags; /* Not used but required by interface */
+{
+  fprintf(fp, "0x%lX", v->ob_ival);
+  return 0;
+}
+
+static PyObject*
+bitfield_repr(v)
+PyIntObject* v;
+{
+  char buf[20];
+  sprintf(buf, "0x%lX", v->ob_ival);
+  return PyString_FromString(buf);
+}
+
+static int
+bitfield_compare(v, w)
+PyIntObject* v, *w;
+{
+  register unsigned long i = v->ob_ival;
+  register unsigned long j = w->ob_ival;
+  return (i < j) ? -1 : (i > j) ? 1 : 0;
+}
+
+static int
+bitfield_nonzero(v)
+PyIntObject* v;
+{
+  return v->ob_ival != 0;
+}
+
+static PyObject*
+bitfield_invert(v)
+PyIntObject* v;
+{
+  return PyNDIBitfield_FromUnsignedLong(~v->ob_ival);
+}
+
+static PyObject*
+bitfield_lshift(v, w)
+PyIntObject* v;
+PyIntObject* w;
+{
+  register unsigned long a, b;
+  a = v->ob_ival;
+  b = w->ob_ival;
+  if (b < 0)
+  {
+    PyErr_SetString(PyExc_ValueError, "negative shift count");
+    return NULL;
+  }
+  if (a == 0 || b == 0)
+  {
+    Py_INCREF(v);
+    return (PyObject*) v;
+  }
+  if (b >= 8 * sizeof(long))
+  {
+    return PyNDIBitfield_FromUnsignedLong(0L);
+  }
+  a = (unsigned long)a << b;
+  return PyNDIBitfield_FromUnsignedLong(a);
+}
+
+static PyObject*
+bitfield_rshift(v, w)
+PyIntObject* v;
+PyIntObject* w;
+{
+  register unsigned long a, b;
+  a = v->ob_ival;
+  b = w->ob_ival;
+  if (b < 0)
+  {
+    PyErr_SetString(PyExc_ValueError, "negative shift count");
+    return NULL;
+  }
+  if (a == 0 || b == 0)
+  {
+    Py_INCREF(v);
+    return (PyObject*) v;
+  }
+  if (b >= 8 * sizeof(long))
+  {
+    if (a < 0)
+    { a = -1; }
+    else
+    { a = 0; }
+  }
+  else
+  {
+    if (a < 0)
+    { a = ~(~(unsigned long)a >> b); }
+    else
+    { a = (unsigned long)a >> b; }
+  }
+  return PyNDIBitfield_FromUnsignedLong(a);
+}
+
+static PyObject*
+bitfield_and(v, w)
+PyIntObject* v;
+PyIntObject* w;
+{
+  register unsigned long a, b;
+  a = v->ob_ival;
+  b = w->ob_ival;
+  return PyNDIBitfield_FromUnsignedLong(a & b);
+}
+
+static PyObject*
+bitfield_xor(v, w)
+PyIntObject* v;
+PyIntObject* w;
+{
+  register unsigned long a, b;
+  a = v->ob_ival;
+  b = w->ob_ival;
+  return PyNDIBitfield_FromUnsignedLong(a ^ b);
+}
+
+static PyObject*
+bitfield_or(v, w)
+PyIntObject* v;
+PyIntObject* w;
+{
+  register unsigned long a, b;
+  a = v->ob_ival;
+  b = w->ob_ival;
+  return PyNDIBitfield_FromUnsignedLong(a | b);
+}
+
+static int
+bitfield_coerce(pv, pw)
+PyObject** pv;
+PyObject** pw;
+{
+  if (PyInt_Check(*pw))
+  {
+    *pw = PyNDIBitfield_FromUnsignedLong(PyInt_AsLong(*pw));
+    Py_INCREF(*pv);
+    return 0;
+  }
+  else if (PyLong_Check(*pw))
+  {
+    *pw = PyNDIBitfield_FromUnsignedLong(PyLong_AsLong(*pw));
+    Py_INCREF(*pv);
+    return 0;
+  }
+  return 1; /* Can't do it */
+}
+
+static PyObject*
+bitfield_int(v)
+PyIntObject* v;
+{
+  return PyInt_FromLong((v -> ob_ival));
+}
+
+static PyObject*
+bitfield_long(v)
+PyIntObject* v;
+{
+  return PyLong_FromLong((v -> ob_ival));
+}
+
+static PyObject*
+bitfield_float(v)
+PyIntObject* v;
+{
+  return PyFloat_FromDouble((double)(v -> ob_ival));
+}
+
+static PyObject*
+bitfield_oct(v)
+PyIntObject* v;
+{
+  char buf[100];
+  long x = v -> ob_ival;
+  if (x == 0)
+  { strcpy(buf, "0"); }
+  else
+  { sprintf(buf, "0%lo", x); }
+  return PyString_FromString(buf);
+}
+
+static PyObject*
+bitfield_hex(v)
+PyIntObject* v;
+{
+  char buf[100];
+  long x = v -> ob_ival;
+  sprintf(buf, "0x%lx", x);
+  return PyString_FromString(buf);
+}
+
+static PyNumberMethods bitfield_as_number =
+{
+  (binaryfunc)0, /*nb_add*/
+  (binaryfunc)0, /*nb_subtract*/
+  (binaryfunc)0, /*nb_multiply*/
+  (binaryfunc)0, /*nb_divide*/
+  (binaryfunc)0, /*nb_remainder*/
+  (binaryfunc)0, /*nb_divmod*/
+  (ternaryfunc)0, /*nb_power*/
+  (unaryfunc)0, /*nb_negative*/
+  (unaryfunc)0, /*nb_positive*/
+  (unaryfunc)0, /*nb_absolute*/
+  (inquiry)bitfield_nonzero, /*nb_nonzero*/
+  (unaryfunc)bitfield_invert, /*nb_invert*/
+  (binaryfunc)bitfield_lshift, /*nb_lshift*/
+  (binaryfunc)bitfield_rshift, /*nb_rshift*/
+  (binaryfunc)bitfield_and, /*nb_and*/
+  (binaryfunc)bitfield_xor, /*nb_xor*/
+  (binaryfunc)bitfield_or, /*nb_or*/
+  (coercion)bitfield_coerce, /*nb_coerce*/
+  (unaryfunc)bitfield_int, /*nb_int*/
+  (unaryfunc)bitfield_long, /*nb_long*/
+  (unaryfunc)bitfield_float, /*nb_float*/
+  (unaryfunc)bitfield_oct, /*nb_oct*/
+  (unaryfunc)bitfield_hex, /*nb_hex*/
+};
+
+PyTypeObject PyNDIBitfield_Type =
+{
+  PyObject_HEAD_INIT(0)  /* (&PyType_Type) */
+  0,
+  "bitfield",
+  sizeof(PyIntObject),
+  0,
+  (destructor)bitfield_dealloc, /*tp_dealloc*/
+  (printfunc)bitfield_print, /*tp_print*/
+  0,    /*tp_getattr*/
+  0,    /*tp_setattr*/
+  (cmpfunc)bitfield_compare, /*tp_compare*/
+  (reprfunc)bitfield_repr, /*tp_repr*/
+  &bitfield_as_number,  /*tp_as_number*/
+  0,    /*tp_as_sequence*/
+  0,    /*tp_as_mapping*/
+  (hashfunc)0, /*tp_hash*/
+};
+
+PyObject* PyNDIBitfield_FromUnsignedLong(unsigned long ival)
+{
+  PyNDIBitfieldObject* v;
+  v = PyObject_NEW(PyNDIBitfieldObject, &PyNDIBitfield_Type);
+
+  v->ob_ival = ival;
+  return (PyObject*) v;
+}
+
+/*=================================================================
+  helper functions
+*/
+
+static PyObject* _ndiErrorHelper(int errnum, PyObject* rval)
+{
+  char errtext[512];
+
+  if (errnum)
+  {
+    Py_DECREF(rval);
+    if ((errnum & 0xff) == errnum)
+    {
+      sprintf(errtext, "POLARIS %#4.2x: %s", errnum, ndiErrorString(errnum));
+    }
+    else
+    {
+      sprintf(errtext, "Error %#6.4x: %s", errnum, ndiErrorString(errnum));
+    }
+    PyErr_SetString(PyExc_IOError, errtext);
+    return NULL;
+  }
+
+  return rval;
+}
+
+static int _ndiConverter(PyObject* obj, ndicapi** polptr)
+{
+  if (PyNdicapi_Check(obj))
+  {
+    *polptr = ((PyNdicapi*)obj)->pl_ndicapi;
+  }
+  else
+  {
+    PyErr_SetString(PyExc_ValueError, "expected an NDICAPI object.");
+    return 0;
+  }
+  return 1;
+}
+
+static PyObject* _PyString_FromChar(char value)
+{
+  return PyString_FromStringAndSize(&value, 1);
+}
+
+/*=================================================================
+  methods
+*/
+
+static PyObject* Py_ndiHexToUnsignedLong(PyObject* module, PyObject* args)
+{
+  char* cp;
+  int n;
+  unsigned long result;
+
+  if (PyArg_ParseTuple(args, "si:plHexToUnsignedLong", &cp, &n))
+  {
+    result = ndiHexToUnsignedLong(cp, n);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiSignedToLong(PyObject* module, PyObject* args)
+{
+  char* cp;
+  int n;
+  long result;
+
+  if (PyArg_ParseTuple(args, "si:plSignedToLong", &cp, &n))
+  {
+    result = ndiSignedToLong(cp, n);
+    return PyInt_FromLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiHexEncode(PyObject* module, PyObject* args)
+{
+  char* result;
+  void* data;
+  char* cp;
+  int m, n;
+  PyObject* obj;
+
+  if (PyArg_ParseTuple(args, "s#i:plHexEncode", &data, &m, &n))
+  {
+    cp = (char*)malloc(2 * n);
+    if (m < n)
+    {
+      PyErr_SetString(PyExc_ValueError, "data string is not long enough");
+      free(cp);
+      return NULL;
+    }
+    result = ndiHexEncode(cp, data, n);
+    obj = PyString_FromStringAndSize(result, 2 * n);
+    free(cp);
+    return obj;
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiHexDecode(PyObject* module, PyObject* args)
+{
+  void* result;
+  void* data;
+  char* cp;
+  int m, n;
+  PyObject* obj;
+
+  if (PyArg_ParseTuple(args, "s#i:plHexDecode", &cp, &m, &n))
+  {
+    data = malloc(n);
+    if (m < 2 * n)
+    {
+      PyErr_SetString(PyExc_ValueError, "encoded string is not long enough");
+      free(data);
+      return NULL;
+    }
+    result = ndiHexEncode((char*)data, cp, n);
+    obj = PyString_FromStringAndSize((char*)result, n);
+    free(data);
+    return obj;
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetError(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+  int result;
+
+  if (PyArg_ParseTuple(args, "O&:plGetError", &_ndiConverter, &pol))
+  {
+    result = ndiGetError(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
+{
+  int errnum;
+  char* result;
+
+  if (PyArg_ParseTuple(args, "i:plErrorString", &errnum))
+  {
+    result = ndiErrorString(errnum);
+    return PyString_FromString(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiDeviceName(PyObject* module, PyObject* args)
+{
+  int n;
+  char* result;
+
+  if (PyArg_ParseTuple(args, "i:plDeviceName", &n))
+  {
+    result = ndiSerialDeviceName(n);
+    if (result)
+    {
+      return PyString_FromString(result);
+    }
+    else
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiProbe(PyObject* module, PyObject* args)
+{
+  char* device;
+  int result;
+
+  if (PyArg_ParseTuple(args, "s:plProbe", &device))
+  {
+    result = ndiSerialProbe(device);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+  char* device;
+  PyNdicapi* self;
+
+  if (PyArg_ParseTuple(args, "s:plOpen", &device))
+  {
+    pol = ndiOpenSerial(device);
+    if (pol == NULL)
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+    self = PyObject_NEW(PyNdicapi, &PyNdicapiType);
+    self->pl_ndicapi = pol;
+    return (PyObject*)self;
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetDeviceName(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+  char* result;
+
+  if (PyArg_ParseTuple(args, "O&:plGetDeviceName", &_ndiConverter, &pol))
+  {
+    result = ndiGetSerialDeviceName(pol);
+    if (result == NULL)
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+    return PyString_FromString(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiClose(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plClose", &_ndiConverter, &pol))
+  {
+    ndiSerialClose(pol);
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiSetThreadMode(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+  int mode;
+
+  if (PyArg_ParseTuple(args, "O&i:plSetThreadMode", &_ndiConverter, &pol,
+                       &mode))
+  {
+    ndiSetThreadMode(pol, mode);
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
+{
+  int n;
+  ndicapi* pol;
+  char* format;
+  char* result;
+  PyObject* initial;
+  PyObject* remainder;
+  PyObject* newstring = NULL;
+  PyObject* obj;
+
+  if ((n = PySequence_Length(args)) < 2)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "plCommand requires at least 2 arguments");
+    return NULL;
+  }
+
+  remainder = PySequence_GetSlice(args, 2, n);
+  initial = PySequence_GetSlice(args, 0, 2);
+
+  if (!PyArg_ParseTuple(initial, "O&z:plCommand",
+                        &_ndiConverter, &pol, &format))
+  {
+    Py_DECREF(initial);
+    Py_DECREF(remainder);
+    return NULL;
+  }
+
+  if (format != NULL)
+  {
+    obj = PySequence_GetItem(args, 1);
+    newstring = PyString_Format(obj, remainder);
+    Py_DECREF(obj);
+    Py_DECREF(initial);
+    Py_DECREF(remainder);
+
+    if (newstring == NULL)
+    {
+      return NULL;
+    }
+
+    result = ndiCommand(pol, "%s", PyString_AsString(newstring));
+  }
+  else
+  {
+    result = ndiCommand(pol, NULL);
+  }
+
+  if (newstring != NULL)
+  {
+    Py_DECREF(newstring);
+  }
+
+  if (result == NULL)
+  {
+    Py_INCREF(Py_None);
+    obj = Py_None;
+  }
+  else
+  {
+    obj = PyString_FromString(result);
+  }
+
+  return _ndiErrorHelper(ndiGetError(pol), obj);
+}
+
+static PyObject* Py_ndiCommand2(PyObject* module, char* format, PyObject* args)
+{
+  int i, n;
+  PyObject* newargs;
+  PyObject* obj;
+
+  if ((n = PySequence_Length(args)) < 1)
+  {
+    PyErr_SetString(PyExc_TypeError,
+                    "plCommand requires at least 2 arguments");
+    return NULL;
+  }
+
+  newargs = PyTuple_New(n + 1);
+  obj = PySequence_GetItem(args, 0);
+  Py_INCREF(obj);
+  PyTuple_SET_ITEM(newargs, 0, obj);
+
+  if (format != NULL)
+  {
+    obj = PyString_FromString(format);
+  }
+  else
+  {
+    Py_INCREF(Py_None);
+    obj = Py_None;
+  }
+  PyTuple_SET_ITEM(newargs, 1, obj);
+
+  for (i = 1; i < n; i++)
+  {
+    obj = PySequence_GetItem(args, i);
+    Py_INCREF(obj);
+    PyTuple_SET_ITEM(newargs, i + 1, obj);
+  }
+
+  obj = Py_ndiCommand(module, newargs);
+
+  Py_DECREF(newargs);
+
+  return obj;
+}
+
+#define PyCommandMacro(name,format) \
+  static PyObject *Py_##name(PyObject *module, PyObject *args) \
+  { \
+    return Py_ndiCommand2(module, format, args); \
+  }
+
+PyCommandMacro(ndiRESET, NULL)
+PyCommandMacro(ndiINIT, "INIT:")
+PyCommandMacro(ndiCOMM, "COMM:%d%03d%d")
+PyCommandMacro(ndiPVWR, "PVWR:%c%04X%.128s")
+PyCommandMacro(ndiPVCLR, "PVCLR:%c")
+PyCommandMacro(ndiPINIT, "PINIT:%c")
+PyCommandMacro(ndiPENA, "PENA:%c%c")
+PyCommandMacro(ndiPDIS, "PDIS:%c")
+PyCommandMacro(ndiTSTART, "TSTART:")
+PyCommandMacro(ndiTSTOP, "TSTOP:")
+PyCommandMacro(ndiGX, "GX:%04X")
+PyCommandMacro(ndiLED, "LED:%c%d%c")
+PyCommandMacro(ndiBEEP, "BEEP:%i")
+PyCommandMacro(ndiVER, "VER:%d")
+PyCommandMacro(ndiVSEL, "VSEL:%d")
+PyCommandMacro(ndiSFLIST, "SFLIST:%02X")
+PyCommandMacro(ndiPSTAT, "PSTAT:%04X")
+PyCommandMacro(ndiSSTAT, "SSTAT:%04X")
+
+PyCommandMacro(ndiPPRD, "PPRD:%c%04X")
+PyCommandMacro(ndiPPWR, "PPWR:%c%04X%.128s")
+PyCommandMacro(ndiPURD, "PURD:%c%04X")
+PyCommandMacro(ndiPUWR, "PPWR:%c%04X%.128s")
+PyCommandMacro(ndiPSEL, "PSEL:%c%s")
+PyCommandMacro(ndiPSRCH, "PSRCH:%c")
+PyCommandMacro(ndiPVTIP, "PVTIP:%c%d%d")
+PyCommandMacro(ndiTCTST, "TCTST:%c")
+PyCommandMacro(ndiTTCFG, "TTCFG:%c")
+
+PyCommandMacro(ndiDSTART, "DSTART:")
+PyCommandMacro(ndiDSTOP, "DSTOP:")
+PyCommandMacro(ndiIRINIT, "IRINIT:")
+PyCommandMacro(ndiIRCHK, "IRCHK:%04X")
+PyCommandMacro(ndiIRED, "IRED:%c%08X")
+PyCommandMacro(ndi3D, "3D:%c%d")
+
+
+static PyObject* Py_ndiPVWRFromFile(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  char* filename;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&cs:plPVWRFromFile",
+                       &_ndiConverter, &pol, &port, &filename))
+  {
+    result = ndiPVWRFromFile(pol, port, filename);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXTransform(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  double transform[8];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetGXTransform",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXTransform(pol, port, transform);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(dddddddd)", transform[0], transform[1],
+                         transform[2], transform[3], transform[4],
+                         transform[5], transform[6], transform[7]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetGXPortStatus",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXPortStatus(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXSystemStatus(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetGXSystemStatus",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetGXSystemStatus(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXToolInfo(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetGXToolInfo",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXToolInfo(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXMarkerInfo(PyObject* module, PyObject* args)
+{
+  char port;
+  char marker;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&ci:plGetGXMarkerInfo",
+                       &_ndiConverter, &pol, &port, &marker))
+  {
+    result = ndiGetGXMarkerInfo(pol, port, marker);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXSingleStray(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  double coord[3];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetGXSingleStray",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXSingleStray(pol, port, coord);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXFrame(PyObject* module, PyObject* args)
+{
+  char port;
+  unsigned long result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetGXFrame",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXFrame(pol, port);
+    return PyLong_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
+    PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetGXNumberOfPassiveStrays",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetGXNumberOfPassiveStrays(pol);
+    return PyInt_FromLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetGXPassiveStray(PyObject* module, PyObject* args)
+{
+  int result;
+  int i;
+  double coord[3];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&i:plGetGXPassiveStray",
+                       &_ndiConverter, &pol, &i))
+  {
+    result = ndiGetGXPassiveStray(pol, i, coord);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATPortStatus(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATPortStatus",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetPSTATPortStatus(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATToolInfo(PyObject* module, PyObject* args)
+{
+  char port;
+  char result[30];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATToolInfo",
+                       &_ndiConverter, &pol, &port))
+  {
+    if (ndiGetPSTATToolInfo(pol, port, result) != NDI_UNOCCUPIED)
+    {
+      return PyString_FromStringAndSize(result, 30);
+    }
+    return PyString_FromString("UNOCCUPIED");
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATCurrentTest(PyObject* module, PyObject* args)
+{
+  char port;
+  unsigned long result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATCurrentTest",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetPSTATCurrentTest(pol, port);
+    return PyLong_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATPartNumber(PyObject* module, PyObject* args)
+{
+  char port;
+  char result[20];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATPartNumber",
+                       &_ndiConverter, &pol, &port))
+  {
+    if (ndiGetPSTATPartNumber(pol, port, result) != NDI_OKAY)
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+    return PyString_FromStringAndSize(result, 20);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATAccessories(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATAccessories",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetPSTATAccessories(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPSTATMarkerType(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetPSTATMarkerType",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetPSTATMarkerType(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetSSTATControl(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetSSTATControl",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetSSTATControl(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetSSTATSensors(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetSSTATSensors",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetSSTATSensors(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetSSTATTIU(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetSSTATTIU",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetSSTATTIU(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetIRCHKDetected(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetIRCHKDetected",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetIRCHKDetected(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetIRCHKNumberOfSources(PyObject* module, PyObject* args)
+{
+  int result;
+  int side;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&i:plGetIRCHKNumberOfSources",
+                       &_ndiConverter, &pol, &side))
+  {
+    result = ndiGetIRCHKNumberOfSources(pol, side);
+    return PyInt_FromLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetIRCHKSourceXY(PyObject* module, PyObject* args)
+{
+  int result;
+  int side;
+  int i;
+  double xy[2];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&ii:plGetIRCHKSourceXY",
+                       &_ndiConverter, &pol, &side, &i))
+  {
+    result = ndiGetIRCHKSourceXY(pol, side, i, xy);
+    if (result != NDI_OKAY)
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+    return Py_BuildValue("(ff)", xy[0], xy[1]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiRelativeTransform(PyObject* module, PyObject* args)
+{
+  double a[8];
+  double b[8];
+
+  if (PyArg_ParseTuple(args, "(dddddddd)(dddddddd):ndiRelativeTransform",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7],
+                       &b[0], &b[1], &b[2], &b[3],
+                       &b[4], &b[5], &b[6], &b[7]))
+  {
+    ndiRelativeTransform(a, b, a);
+
+    return Py_BuildValue("(dddddddd)", a[0], a[1], a[2], a[3],
+                         a[4], a[5], a[6], a[7]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiTransformToMatrixd(PyObject* module, PyObject* args)
+{
+  double a[8];
+  double c[16];
+
+  if (PyArg_ParseTuple(args, "(dddddddd):ndiTransformToMatrixd",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7]))
+  {
+    ndiTransformToMatrixd(a, c);
+
+    return Py_BuildValue("(dddddddddddddddd)",
+                         c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7],
+                         c[8], c[9], c[10], c[11], c[12], c[13], c[14], c[15]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiTransformToMatrixf(PyObject* module, PyObject* args)
+{
+  float a[8];
+  float c[16];
+
+  if (PyArg_ParseTuple(args, "(ffffffff):ndiTransformToMatrixf",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7]))
+  {
+    ndiTransformToMatrixf(a, c);
+
+    return Py_BuildValue("(ffffffffffffffff)",
+                         c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7],
+                         c[8], c[9], c[10], c[11], c[12], c[13], c[14], c[15]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiAnglesFromMatrixd(PyObject* module, PyObject* args)
+{
+  double a[16];
+  double c[3];
+
+  if (PyArg_ParseTuple(args, "(dddddddddddddddd):ndiAnglesFromMatrixd",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7],
+                       &a[8], &a[9], &a[10], &a[11],
+                       &a[12], &a[13], &a[14], &a[15]))
+  {
+    ndiAnglesFromMatrixd(c, a);
+
+    return Py_BuildValue("(ddd)", c[0], c[1], c[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiAnglesFromMatrixf(PyObject* module, PyObject* args)
+{
+  float a[16];
+  float c[3];
+
+  if (PyArg_ParseTuple(args, "(ffffffffffffffff):ndiAnglesFromMatrixf",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7],
+                       &a[8], &a[9], &a[10], &a[11],
+                       &a[12], &a[13], &a[14], &a[15]))
+  {
+    ndiAnglesFromMatrixf(c, a);
+
+    return Py_BuildValue("(fff)", c[0], c[1], c[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiCoordsFromMatrixd(PyObject* module, PyObject* args)
+{
+  double a[16];
+  double c[3];
+
+  if (PyArg_ParseTuple(args, "(dddddddddddddddd):ndiCoordsFromMatrixd",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7],
+                       &a[8], &a[9], &a[10], &a[11],
+                       &a[12], &a[13], &a[14], &a[15]))
+  {
+    ndiCoordsFromMatrixd(c, a);
+
+    return Py_BuildValue("(ddd)", c[0], c[1], c[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiCoordsFromMatrixf(PyObject* module, PyObject* args)
+{
+  float a[16];
+  float c[3];
+
+  if (PyArg_ParseTuple(args, "(ffffffffffffffff):ndiCoordsFromMatrixf",
+                       &a[0], &a[1], &a[2], &a[3],
+                       &a[4], &a[5], &a[6], &a[7],
+                       &a[8], &a[9], &a[10], &a[11],
+                       &a[12], &a[13], &a[14], &a[15]))
+  {
+    ndiCoordsFromMatrixf(c, a);
+
+    return Py_BuildValue("(fff)", c[0], c[1], c[2]);
+  }
+
+  return NULL;
+}
+
+/*=================================================================
+  Module definition
+*/
+#define Py_NDIMethodMacro(name) {#name,  Py_##name,  METH_VARARGS}
+
+static PyMethodDef NdicapiMethods[] =
+{
+  Py_NDIMethodMacro(ndiHexToUnsignedLong),
+  Py_NDIMethodMacro(ndiSignedToLong),
+  Py_NDIMethodMacro(ndiHexEncode),
+  Py_NDIMethodMacro(ndiHexDecode),
+
+  Py_NDIMethodMacro(ndiDeviceName),
+  Py_NDIMethodMacro(ndiProbe),
+  Py_NDIMethodMacro(ndiOpen),
+  Py_NDIMethodMacro(ndiGetDeviceName),
+  Py_NDIMethodMacro(ndiClose),
+  Py_NDIMethodMacro(ndiSetThreadMode),
+  Py_NDIMethodMacro(ndiCommand),
+
+  Py_NDIMethodMacro(ndiGetError),
+  Py_NDIMethodMacro(ndiErrorString),
+
+  Py_NDIMethodMacro(ndiRESET),
+  Py_NDIMethodMacro(ndiINIT),
+  Py_NDIMethodMacro(ndiCOMM),
+
+  Py_NDIMethodMacro(ndiPVWRFromFile),
+
+  Py_NDIMethodMacro(ndiPVWR),
+  Py_NDIMethodMacro(ndiPVCLR),
+  Py_NDIMethodMacro(ndiPINIT),
+  Py_NDIMethodMacro(ndiPENA),
+  Py_NDIMethodMacro(ndiPDIS),
+  Py_NDIMethodMacro(ndiTSTART),
+  Py_NDIMethodMacro(ndiTSTOP),
+  Py_NDIMethodMacro(ndiGX),
+
+  Py_NDIMethodMacro(ndiGetGXTransform),
+  Py_NDIMethodMacro(ndiGetGXPortStatus),
+  Py_NDIMethodMacro(ndiGetGXSystemStatus),
+  Py_NDIMethodMacro(ndiGetGXToolInfo),
+  Py_NDIMethodMacro(ndiGetGXMarkerInfo),
+  Py_NDIMethodMacro(ndiGetGXSingleStray),
+  Py_NDIMethodMacro(ndiGetGXFrame),
+  Py_NDIMethodMacro(ndiGetGXNumberOfPassiveStrays),
+  Py_NDIMethodMacro(ndiGetGXPassiveStray),
+
+  Py_NDIMethodMacro(ndiLED),
+  Py_NDIMethodMacro(ndiBEEP),
+  Py_NDIMethodMacro(ndiVER),
+  Py_NDIMethodMacro(ndiSFLIST),
+  Py_NDIMethodMacro(ndiVSEL),
+  Py_NDIMethodMacro(ndiPSTAT),
+
+  Py_NDIMethodMacro(ndiGetPSTATPortStatus),
+  Py_NDIMethodMacro(ndiGetPSTATToolInfo),
+  Py_NDIMethodMacro(ndiGetPSTATCurrentTest),
+  Py_NDIMethodMacro(ndiGetPSTATPartNumber),
+  Py_NDIMethodMacro(ndiGetPSTATAccessories),
+  Py_NDIMethodMacro(ndiGetPSTATMarkerType),
+
+  Py_NDIMethodMacro(ndiSSTAT),
+
+  Py_NDIMethodMacro(ndiGetSSTATControl),
+  Py_NDIMethodMacro(ndiGetSSTATSensors),
+  Py_NDIMethodMacro(ndiGetSSTATTIU),
+
+  Py_NDIMethodMacro(ndiPPRD),
+  Py_NDIMethodMacro(ndiPPWR),
+  Py_NDIMethodMacro(ndiPURD),
+  Py_NDIMethodMacro(ndiPUWR),
+  Py_NDIMethodMacro(ndiPSEL),
+  Py_NDIMethodMacro(ndiPSRCH),
+  Py_NDIMethodMacro(ndiPVTIP),
+  Py_NDIMethodMacro(ndiTCTST),
+  Py_NDIMethodMacro(ndiTTCFG),
+
+  Py_NDIMethodMacro(ndiDSTART),
+  Py_NDIMethodMacro(ndiDSTOP),
+  Py_NDIMethodMacro(ndiIRINIT),
+  Py_NDIMethodMacro(ndiIRCHK),
+
+  Py_NDIMethodMacro(ndiGetIRCHKDetected),
+  Py_NDIMethodMacro(ndiGetIRCHKNumberOfSources),
+  Py_NDIMethodMacro(ndiGetIRCHKSourceXY),
+
+  Py_NDIMethodMacro(ndiIRED),
+  Py_NDIMethodMacro(ndi3D),
+
+  Py_NDIMethodMacro(ndiRelativeTransform),
+  Py_NDIMethodMacro(ndiTransformToMatrixd),
+  Py_NDIMethodMacro(ndiTransformToMatrixf),
+  Py_NDIMethodMacro(ndiAnglesFromMatrixd),
+  Py_NDIMethodMacro(ndiAnglesFromMatrixf),
+  Py_NDIMethodMacro(ndiCoordsFromMatrixd),
+  Py_NDIMethodMacro(ndiCoordsFromMatrixf),
+
+  {NULL, NULL}
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define Py_NDIBitfieldMacro(a) \
+     PyDict_SetItemString(dict, #a, PyNDIBitfield_FromUnsignedLong(a))
+#define Py_NDIConstantMacro(a) \
+     PyDict_SetItemString(dict, #a, PyInt_FromLong(a))
+#define Py_NDIErrcodeMacro(a) \
+     PyDict_SetItemString(dict, #a, PyNDIBitfield_FromUnsignedLong(a))
+#define Py_NDICharMacro(a) \
+     PyDict_SetItemString(dict, #a, _PyString_FromChar(a))
+
+void ndicapiExport initndicapi()
+{
+  PyObject* module;
+  PyObject* dict;
+
+  PyNdicapiType.ob_type = &PyType_Type;
+  PyNDIBitfield_Type.ob_type = &PyType_Type;
+
+  module = Py_InitModule("ndicapi", NdicapiMethods);
+  dict = PyModule_GetDict(module);
+
+  Py_NDIConstantMacro(NDICAPI_MAJOR_VERSION);
+  Py_NDIConstantMacro(NDICAPI_MINOR_VERSION);
+
+  Py_NDIConstantMacro(NDI_OKAY);
+
+  Py_NDIErrcodeMacro(NDI_INVALID);
+  Py_NDIErrcodeMacro(NDI_TOO_LONG);
+  Py_NDIErrcodeMacro(NDI_TOO_SHORT);
+  Py_NDIErrcodeMacro(NDI_BAD_COMMAND_CRC);
+  Py_NDIErrcodeMacro(NDI_INTERN_TIMEOUT);
+  Py_NDIErrcodeMacro(NDI_COMM_FAIL);
+  Py_NDIErrcodeMacro(NDI_PARAMETERS);
+  Py_NDIErrcodeMacro(NDI_INVALID_PORT);
+  Py_NDIErrcodeMacro(NDI_INVALID_MODE);
+  Py_NDIErrcodeMacro(NDI_INVALID_LED);
+  Py_NDIErrcodeMacro(NDI_LED_STATE);
+  Py_NDIErrcodeMacro(NDI_BAD_MODE);
+  Py_NDIErrcodeMacro(NDI_NO_TOOL);
+  Py_NDIErrcodeMacro(NDI_PORT_NOT_INIT);
+  Py_NDIErrcodeMacro(NDI_PORT_DISABLED);
+  Py_NDIErrcodeMacro(NDI_INITIALIZATION);
+  Py_NDIErrcodeMacro(NDI_TSTOP_FAIL);
+  Py_NDIErrcodeMacro(NDI_TSTART_FAIL);
+  Py_NDIErrcodeMacro(NDI_PINIT_FAIL);
+  Py_NDIErrcodeMacro(NDI_DSTART_FAIL);
+  Py_NDIErrcodeMacro(NDI_DSTOP_FAIL);
+  Py_NDIErrcodeMacro(NDI_IRCHK_FAIL);
+  Py_NDIErrcodeMacro(NDI_FIRMWARE);
+  Py_NDIErrcodeMacro(NDI_INTERNAL);
+  Py_NDIErrcodeMacro(NDI_IRINIT_FAIL);
+  Py_NDIErrcodeMacro(NDI_IRED_FAIL);
+  Py_NDIErrcodeMacro(NDI_SROM_FAIL);
+  Py_NDIErrcodeMacro(NDI_SROM_READ);
+  Py_NDIErrcodeMacro(NDI_SROM_WRITE);
+  Py_NDIErrcodeMacro(NDI_SROM_SELECT);
+  Py_NDIErrcodeMacro(NDI_PORT_CURRENT);
+  Py_NDIErrcodeMacro(NDI_WAVELENGTH);
+  Py_NDIErrcodeMacro(NDI_PARAMETER_RANGE);
+  Py_NDIErrcodeMacro(NDI_VOLUME);
+  Py_NDIErrcodeMacro(NDI_FEATURES);
+
+  Py_NDIErrcodeMacro(NDI_ENVIRONMENT);
+
+  Py_NDIErrcodeMacro(NDI_EPROM_READ);
+  Py_NDIErrcodeMacro(NDI_EPROM_WRITE);
+  Py_NDIErrcodeMacro(NDI_EPROM_ERASE);
+
+  Py_NDIErrcodeMacro(NDI_BAD_CRC);
+  Py_NDIErrcodeMacro(NDI_OPEN_ERROR);
+  Py_NDIErrcodeMacro(NDI_BAD_COMM);
+  Py_NDIErrcodeMacro(NDI_TIMEOUT);
+  Py_NDIErrcodeMacro(NDI_WRITE_ERROR);
+  Py_NDIErrcodeMacro(NDI_READ_ERROR);
+  Py_NDIErrcodeMacro(NDI_PROBE_FAIL);
+
+  Py_NDIConstantMacro(NDI_9600);
+  Py_NDIConstantMacro(NDI_14400);
+  Py_NDIConstantMacro(NDI_19200);
+  Py_NDIConstantMacro(NDI_38400);
+  Py_NDIConstantMacro(NDI_57600);
+  Py_NDIConstantMacro(NDI_115200);
+  Py_NDIConstantMacro(NDI_921600);
+  Py_NDIConstantMacro(NDI_1228739);
+  Py_NDIConstantMacro(NDI_230400);
+
+  Py_NDIConstantMacro(NDI_8N1);
+  Py_NDIConstantMacro(NDI_8N2);
+  Py_NDIConstantMacro(NDI_8O1);
+  Py_NDIConstantMacro(NDI_8O2);
+  Py_NDIConstantMacro(NDI_8E1);
+  Py_NDIConstantMacro(NDI_8E2);
+  Py_NDIConstantMacro(NDI_7N1);
+  Py_NDIConstantMacro(NDI_7N2);
+  Py_NDIConstantMacro(NDI_7O1);
+  Py_NDIConstantMacro(NDI_7O2);
+  Py_NDIConstantMacro(NDI_7E1);
+  Py_NDIConstantMacro(NDI_7E2);
+
+  Py_NDIConstantMacro(NDI_NOHANDSHAKE);
+  Py_NDIConstantMacro(NDI_HANDSHAKE);
+
+  Py_NDICharMacro(NDI_STATIC);
+  Py_NDICharMacro(NDI_DYNAMIC);
+  Py_NDICharMacro(NDI_BUTTON_BOX);
+
+  Py_NDIBitfieldMacro(NDI_XFORMS_AND_STATUS);
+  Py_NDIBitfieldMacro(NDI_ADDITIONAL_INFO);
+  Py_NDIBitfieldMacro(NDI_SINGLE_STRAY);
+  Py_NDIBitfieldMacro(NDI_FRAME_NUMBER);
+  Py_NDIBitfieldMacro(NDI_PASSIVE);
+  Py_NDIBitfieldMacro(NDI_PASSIVE_EXTRA);
+  Py_NDIBitfieldMacro(NDI_PASSIVE_STRAY);
+
+  Py_NDIConstantMacro(NDI_DISABLED);
+  Py_NDIConstantMacro(NDI_MISSING);
+
+  Py_NDIBitfieldMacro(NDI_TOOL_IN_PORT);
+  Py_NDIBitfieldMacro(NDI_SWITCH_1_ON);
+  Py_NDIBitfieldMacro(NDI_SWITCH_2_ON);
+  Py_NDIBitfieldMacro(NDI_SWITCH_3_ON);
+  Py_NDIBitfieldMacro(NDI_INITIALIZED);
+  Py_NDIBitfieldMacro(NDI_ENABLED);
+  Py_NDIBitfieldMacro(NDI_OUT_OF_VOLUME);
+  Py_NDIBitfieldMacro(NDI_PARTIALLY_IN_VOLUME);
+  Py_NDIBitfieldMacro(NDI_CURRENT_DETECT);
+
+  Py_NDIBitfieldMacro(NDI_COMM_SYNC_ERROR);
+  Py_NDIBitfieldMacro(NDI_TOO_MUCH_EXTERNAL_INFRARED);
+  Py_NDIBitfieldMacro(NDI_COMM_CRC_ERROR);
+
+  Py_NDIBitfieldMacro(NDI_BAD_TRANSFORM_FIT);
+  Py_NDIBitfieldMacro(NDI_NOT_ENOUGH_MARKERS);
+  Py_NDIBitfieldMacro(NDI_TOOL_FACE_USED);
+
+  Py_NDIBitfieldMacro(NDI_MARKER_MISSING);
+  Py_NDIBitfieldMacro(NDI_MARKER_EXCEEDED_MAX_ANGLE);
+  Py_NDIBitfieldMacro(NDI_MARKER_EXCEEDED_MAX_ERROR);
+  Py_NDIBitfieldMacro(NDI_MARKER_USED);
+
+  Py_NDICharMacro(NDI_BLANK);
+  Py_NDICharMacro(NDI_FLASH);
+  Py_NDICharMacro(NDI_SOLID);
+
+  Py_NDIBitfieldMacro(NDI_BASIC);
+  Py_NDIBitfieldMacro(NDI_TESTING);
+  Py_NDIBitfieldMacro(NDI_PART_NUMBER);
+  Py_NDIBitfieldMacro(NDI_ACCESSORIES);
+  Py_NDIBitfieldMacro(NDI_MARKER_TYPE);
+
+  Py_NDIConstantMacro(NDI_UNOCCUPIED);
+
+  Py_NDIBitfieldMacro(NDI_TOOL_IN_PORT_SWITCH);
+  Py_NDIBitfieldMacro(NDI_SWITCH_1);
+  Py_NDIBitfieldMacro(NDI_SWITCH_2);
+  Py_NDIBitfieldMacro(NDI_SWITCH_3);
+  Py_NDIBitfieldMacro(NDI_TOOL_TRACKING_LED);
+  Py_NDIBitfieldMacro(NDI_LED_1);
+  Py_NDIBitfieldMacro(NDI_LED_2);
+  Py_NDIBitfieldMacro(NDI_LED_3);
+
+  Py_NDIBitfieldMacro(NDI_950NM);
+  Py_NDIBitfieldMacro(NDI_850NM);
+
+  Py_NDIBitfieldMacro(NDI_NDI_ACTIVE);
+  Py_NDIBitfieldMacro(NDI_NDI_CERAMIC);
+  Py_NDIBitfieldMacro(NDI_PASSIVE_ANY);
+  Py_NDIBitfieldMacro(NDI_PASSIVE_SPHERE);
+  Py_NDIBitfieldMacro(NDI_PASSIVE_DISC);
+
+  Py_NDIBitfieldMacro(NDI_CONTROL);
+  Py_NDIBitfieldMacro(NDI_SENSORS);
+  Py_NDIBitfieldMacro(NDI_TIU);
+
+  Py_NDIBitfieldMacro(NDI_EPROM_CODE_CHECKSUM);
+  Py_NDIBitfieldMacro(NDI_EPROM_SYSTEM_CHECKSUM);
+
+  Py_NDIBitfieldMacro(NDI_LEFT_ROM_CHECKSUM);
+  Py_NDIBitfieldMacro(NDI_LEFT_SYNC_TYPE_1);
+  Py_NDIBitfieldMacro(NDI_LEFT_SYNC_TYPE_2);
+  Py_NDIBitfieldMacro(NDI_RIGHT_ROM_CHECKSUM);
+  Py_NDIBitfieldMacro(NDI_RIGHT_SYNC_TYPE_1);
+  Py_NDIBitfieldMacro(NDI_RIGHT_SYNC_TYPE_2);
+
+  Py_NDIBitfieldMacro(NDI_ROM_CHECKSUM);
+  Py_NDIBitfieldMacro(NDI_OPERATING_VOLTAGES);
+  Py_NDIBitfieldMacro(NDI_MARKER_SEQUENCING);
+  Py_NDIBitfieldMacro(NDI_SYNC);
+  Py_NDIBitfieldMacro(NDI_COOLING_FAN);
+  Py_NDIBitfieldMacro(NDI_INTERNAL_ERROR);
+
+  Py_NDIBitfieldMacro(NDI_DETECTED);
+  Py_NDIBitfieldMacro(NDI_SOURCES);
+
+  Py_NDIConstantMacro(NDI_LEFT);
+  Py_NDIConstantMacro(NDI_RIGHT);
+}
+
+#ifdef __cplusplus
+}
+#endif
