@@ -61,8 +61,20 @@ IF(BUILD_PYTHON)
   FIND_PACKAGE(PythonLibs QUIET)
   IF(PYTHONLIBS_FOUND)
     IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
-      MESSAGE("Only python2 wrapping is supported at this time.")
+      MESSAGE(WARNING "Only python2 wrapping is supported at this time."
+        " Will not generate setup.py for Python extension."
+        )
     ELSE()
+      SET(SETUP_PY_FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
+      MESSAGE("Successfully generated ${SETUP_PY_FILEPATH} for the Python"
+	      " extension module. To install the Python extension module:"
+	      "\n\t0) Install the C++ library: make && make install"
+	      " (might need admin access)"
+	      "\n\t1) Go to ${CMAKE_CURRENT_SOURCE_DIR}"
+	      "\n\t2) Build the Python extension: python setup.py build"
+	      "\n\t3) Install the Python extension: python setup.py install"
+	      " (might need admin access)"
+        )
       LIST(APPEND ${PROJECT_NAME}_SRCS
         ndicapimodule.cxx
         )
@@ -72,13 +84,13 @@ IF(BUILD_PYTHON)
       LIST(APPEND ${PROJECT_NAME}_LIBS
         ${PYTHON_LIBRARIES}
         )
+
+      CONFIGURE_FILE(
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+        ${SETUP_PY_FILEPATH}
+        )
     ENDIF()
   ENDIF()
-
-  CONFIGURE_FILE(
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
-    )
 ENDIF()
 
 FIND_PACKAGE(Threads)
