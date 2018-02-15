@@ -15,9 +15,9 @@ if __name__ == '__main__':
         raise IOError(
             'Could not find any NDI device in '
             '{}. Please check the following:\n'
-            '\t1) Is an NDI device connected to your computer?'
-            '\t2) Is the NDI device switched on?'
-            '\t3) Do you have sufficient privilege to connect to '
+            '\n\t1) Is an NDI device connected to your computer?'
+            '\n\t2) Is the NDI device switched on?'
+            '\n\t3) Do you have sufficient privilege to connect to '
             'the device? (e.g. on Linux are you part of the "dialout" '
             'group?)'.format(MAX_SERIAL_PORTS)
         )
