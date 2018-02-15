@@ -4,9 +4,10 @@ import sys
 
 mac_indicator = 'darwin'
 linux_indicator = 'linux'
+windows_indicator = 'win'
 platform = sys.platform
-if platform.startswith(linux_indicator) or platform.startswith(mac_indicator):
-    cxx_library_dir = '/usr/local/lib'
+cxx_library_dir = "@CMAKE_INSTALL_PREFIX@/lib"
+
 extra_link_args = []
 if platform.startswith(mac_indicator):
     extra_link_args.append('-Wl')  # pass the following options to linker
@@ -23,6 +24,7 @@ module1 = Extension('pyndicapi',
                     ],
                     libraries=['ndicapi'],
                     extra_link_args=extra_link_args,
+                    library_dirs=[cxx_library_dir]
                     )
 
 setup(name='pyndicapi',
