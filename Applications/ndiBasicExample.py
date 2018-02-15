@@ -11,7 +11,7 @@ if __name__ == '__main__':
         result = ndiProbe(name)
         if result == NDI_OKAY:
             break
-    if not name:
+    if result != NDI_OKAY:
         raise IOError(
             'Could not find any NDI device in '
             '{}. Please check the following:\n'
