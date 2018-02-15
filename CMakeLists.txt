@@ -61,7 +61,9 @@ IF(BUILD_PYTHON)
   FIND_PACKAGE(PythonLibs QUIET)
   IF(PYTHONLIBS_FOUND)
     IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
-      MESSAGE("Only python2 wrapping is supported at this time.")
+      MESSAGE(WARNING "Only python2 wrapping is supported at this time."
+        " Will not generate setup.py for Python extension."
+        )
     ELSE()
       LIST(APPEND ${PROJECT_NAME}_SRCS
         ndicapimodule.cxx
@@ -72,13 +74,13 @@ IF(BUILD_PYTHON)
       LIST(APPEND ${PROJECT_NAME}_LIBS
         ${PYTHON_LIBRARIES}
         )
+
+      CONFIGURE_FILE(
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+        )
     ENDIF()
   ENDIF()
-
-  CONFIGURE_FILE(
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
-    )
 ENDIF()
 
 FIND_PACKAGE(Threads)
