@@ -23,11 +23,14 @@ The contents of this package have been built successfully under a wide range of 
 To build, configure first using CMake, then build according to your chosen generator.
 
 ### Python
-*Currently broken*: To build a Python (http://www.python.org) interface to this library, do
-```  
+To build a Python (http://www.python.org) interface to this library
+1. Build **and** install the C++ library first.
+1. Then run
+
+```sh
 python setup.py build
 python setup.py install
->>> import ndicapi
+>>> import pyndicapi
 ```
 
 ## Contents

@@ -1,0 +1,35 @@
+from distutils.core import setup, Extension
+import sys
+
+
+mac_indicator = 'darwin'
+linux_indicator = 'linux'
+windows_indicator = 'win'
+platform = sys.platform
+cxx_library_dir = "@CMAKE_INSTALL_PREFIX@/lib"
+
+extra_link_args = []
+if platform.startswith(mac_indicator):
+    extra_link_args.append('-Wl')  # pass the following options to linker
+    extra_link_args.append('-rpath')         # tell linker to resolve RPATH to:
+    extra_link_args.append(cxx_library_dir)  # cxx_library_dir, on Mac
+
+module1 = Extension('pyndicapi',
+                    sources=[
+                        'ndicapi.cxx',
+                        'ndicapi_math.cxx',
+                        'ndicapi_serial.cxx',
+                        'ndicapi_thread.cxx',
+                        'ndicapimodule.cxx',
+                    ],
+                    libraries=['ndicapi'],
+                    extra_link_args=extra_link_args,
+                    library_dirs=[cxx_library_dir],
+                    runtime_library_dirs=[cxx_library_dir],
+                    )
+
+setup(name='pyndicapi',
+      version='3.2',
+      description='This package allows interfacing with NDI tracking devices',
+      ext_modules=[module1]
+      )

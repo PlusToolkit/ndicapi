@@ -1,2 +1,5 @@
+.idea
+CMakeLists.txt.user
 /ndicapiExport.h
 /build
+setup.py

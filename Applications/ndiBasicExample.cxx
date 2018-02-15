@@ -1,5 +1,6 @@
 // A simple program that connects to an NDI tracker
 #include <ndicapi.h>
+#include <cstring>
 
 #include <iostream>
 #if _MSC_VER >= 1700
