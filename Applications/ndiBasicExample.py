@@ -8,6 +8,8 @@ if __name__ == '__main__':
     name = ''
     for port_no in range(MAX_SERIAL_PORTS):
         name = ndiDeviceName(port_no)
+        if not name:
+            continue
         result = ndiProbe(name)
         if result == NDI_OKAY:
             break
