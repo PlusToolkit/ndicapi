@@ -1,7 +1,8 @@
 from pyndicapi import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
     ndiOpen, ndiClose, ndiCommand, ndiGetError,
-    ndiErrorString,
+    ndiErrorString, NDI_115200,
+    NDI_8N1, NDI_NOHANDSHAKE,
 )
 
 
@@ -41,5 +42,12 @@ if __name__ == '__main__':
             'Error when sending command: '
             '{}'.format(ndiErrorString(error))
         )
+
+    reply = ndiCommand(
+        device,
+        'COMM:{:d}{:03d}{:d}'.format(NDI_115200, NDI_8N1, NDI_NOHANDSHAKE)
+    )
+
+    # Add your own commands here!!!
 
     ndiClose(device)
