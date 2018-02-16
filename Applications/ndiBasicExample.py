@@ -1,5 +1,6 @@
 from pyndicapi import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
+    ndiOpen, ndiClose
 )
 
 
@@ -25,3 +26,11 @@ if __name__ == '__main__':
             'group?)'.format(MAX_SERIAL_PORTS)
         )
 
+    device = ndiOpen(name)
+    if not device:
+        raise IOError(
+            'Could not connect to NDI device found on '
+            '{}'.format(name)
+        )
+
+    ndiClose(device)
