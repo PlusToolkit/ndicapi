@@ -344,11 +344,21 @@ PyTypeObject PyNDIBitfield_Type =
 
 PyObject* PyNDIBitfield_FromUnsignedLong(unsigned long ival)
 {
+  return PyLong_FromUnsignedLong(ival);
+
+  /* The implementation below has been commented out,
+   * as it leads to double memory deallocation. The
+   * PyNDIBitfieldObject does not seem to be used
+   * anywhere else in the entire codebase either. So
+   * the assumption is that the above implementation
+   * of this function should not break any features.
+   *
   PyNDIBitfieldObject* v;
   v = PyObject_NEW(PyNDIBitfieldObject, &PyNDIBitfield_Type);
 
   v->ob_ival = ival;
   return (PyObject*) v;
+   */
 }
 
 /*=================================================================
@@ -562,6 +572,7 @@ static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
     }
     self = PyObject_NEW(PyNdicapi, &PyNdicapiType);
     self->pl_ndicapi = pol;
+    Py_INCREF(self);
     return (PyObject*)self;
   }
 
