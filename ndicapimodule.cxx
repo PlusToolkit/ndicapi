@@ -586,6 +586,7 @@ static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
     }
     self = PyObject_NEW(PyNdicapi, &PyNdicapiType);
     self->pl_ndicapi = pol;
+    Py_INCREF(self);
     return (PyObject*)self;
   }
 
