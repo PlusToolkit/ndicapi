@@ -67,8 +67,7 @@ static PyObject* PyNdicapi_PyGetAttr(PyObject* self, char* name)
 
   pol = ((PyNdicapi*)self)->pl_ndicapi;
   PyErr_SetString(PyExc_AttributeError, name);
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyTypeObject PyNdicapiType =
@@ -165,8 +164,7 @@ bitfield_lshift(PyIntObject* v, PyIntObject* w)
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
   if (a == 0 || b == 0)
   {
@@ -190,8 +188,7 @@ bitfield_rshift(PyIntObject* v, PyIntObject* w)
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
   if (a == 0 || b == 0)
   {
@@ -384,8 +381,7 @@ static PyObject* _ndiErrorHelper(int errnum, PyObject* rval)
       sprintf(errtext, "Error %#6.4x: %s", errnum, ndiErrorString(errnum));
     }
     PyErr_SetString(PyExc_IOError, errtext);
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
 
   return rval;
@@ -426,8 +422,7 @@ static PyObject* Py_ndiHexToUnsignedLong(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiSignedToLong(PyObject* module, PyObject* args)
@@ -442,8 +437,7 @@ static PyObject* Py_ndiSignedToLong(PyObject* module, PyObject* args)
     return PyInt_FromLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiHexEncode(PyObject* module, PyObject* args)
@@ -461,8 +455,7 @@ static PyObject* Py_ndiHexEncode(PyObject* module, PyObject* args)
     {
       PyErr_SetString(PyExc_ValueError, "data string is not long enough");
       free(cp);
-      Py_INCREF(Py_None);
-      return Py_None;
+      return NULL;
     }
     result = ndiHexEncode(cp, data, n);
     obj = PyString_FromStringAndSize(result, 2 * n);
@@ -470,8 +463,7 @@ static PyObject* Py_ndiHexEncode(PyObject* module, PyObject* args)
     return obj;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiHexDecode(PyObject* module, PyObject* args)
@@ -489,8 +481,7 @@ static PyObject* Py_ndiHexDecode(PyObject* module, PyObject* args)
     {
       PyErr_SetString(PyExc_ValueError, "encoded string is not long enough");
       free(data);
-      Py_INCREF(Py_None);
-      return Py_None;
+      return NULL;
     }
     result = ndiHexEncode((char*)data, cp, n);
     obj = PyString_FromStringAndSize((char*)result, n);
@@ -498,8 +489,7 @@ static PyObject* Py_ndiHexDecode(PyObject* module, PyObject* args)
     return obj;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetError(PyObject* module, PyObject* args)
@@ -513,8 +503,7 @@ static PyObject* Py_ndiGetError(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
@@ -528,8 +517,7 @@ static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
     return PyString_FromString(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiDeviceName(PyObject* module, PyObject* args)
@@ -551,8 +539,7 @@ static PyObject* Py_ndiDeviceName(PyObject* module, PyObject* args)
     }
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiProbe(PyObject* module, PyObject* args)
@@ -566,8 +553,7 @@ static PyObject* Py_ndiProbe(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
@@ -590,8 +576,7 @@ static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
     return (PyObject*)self;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetDeviceName(PyObject* module, PyObject* args)
@@ -610,8 +595,7 @@ static PyObject* Py_ndiGetDeviceName(PyObject* module, PyObject* args)
     return PyString_FromString(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiClose(PyObject* module, PyObject* args)
@@ -625,8 +609,7 @@ static PyObject* Py_ndiClose(PyObject* module, PyObject* args)
     return Py_None;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiSetThreadMode(PyObject* module, PyObject* args)
@@ -642,8 +625,7 @@ static PyObject* Py_ndiSetThreadMode(PyObject* module, PyObject* args)
     return Py_None;
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
@@ -661,8 +643,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   {
     PyErr_SetString(PyExc_TypeError,
                     "plCommand requires at least 2 arguments");
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
 
   remainder = PySequence_GetSlice(args, 2, n);
@@ -673,8 +654,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   {
     Py_DECREF(initial);
     Py_DECREF(remainder);
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
 
   if (format != NULL)
@@ -687,8 +667,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
 
     if (newstring == NULL)
     {
-      Py_INCREF(Py_None);
-      return Py_None;
+      return NULL;
     }
 
     result = ndiCommand(pol, "%s", PyString_AsString(newstring));
@@ -726,8 +705,7 @@ static PyObject* Py_ndiCommand2(PyObject* module, char* format, PyObject* args)
   {
     PyErr_SetString(PyExc_TypeError,
                     "plCommand requires at least 2 arguments");
-    Py_INCREF(Py_None);
-    return Py_None;
+    return NULL;
   }
 
   newargs = PyTuple_New(n + 1);
@@ -817,8 +795,7 @@ static PyObject* Py_ndiPVWRFromFile(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXTransform(PyObject* module, PyObject* args)
@@ -847,8 +824,7 @@ static PyObject* Py_ndiGetGXTransform(PyObject* module, PyObject* args)
                          transform[5], transform[6], transform[7]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
@@ -864,8 +840,7 @@ static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXSystemStatus(PyObject* module, PyObject* args)
@@ -880,8 +855,7 @@ static PyObject* Py_ndiGetGXSystemStatus(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXToolInfo(PyObject* module, PyObject* args)
@@ -897,8 +871,7 @@ static PyObject* Py_ndiGetGXToolInfo(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXMarkerInfo(PyObject* module, PyObject* args)
@@ -915,8 +888,7 @@ static PyObject* Py_ndiGetGXMarkerInfo(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXSingleStray(PyObject* module, PyObject* args)
@@ -943,8 +915,7 @@ static PyObject* Py_ndiGetGXSingleStray(PyObject* module, PyObject* args)
     return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXFrame(PyObject* module, PyObject* args)
@@ -960,8 +931,7 @@ static PyObject* Py_ndiGetGXFrame(PyObject* module, PyObject* args)
     return PyLong_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
@@ -977,8 +947,7 @@ static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
     return PyInt_FromLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetGXPassiveStray(PyObject* module, PyObject* args)
@@ -1005,8 +974,7 @@ static PyObject* Py_ndiGetGXPassiveStray(PyObject* module, PyObject* args)
     return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATPortStatus(PyObject* module, PyObject* args)
@@ -1022,8 +990,7 @@ static PyObject* Py_ndiGetPSTATPortStatus(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATToolInfo(PyObject* module, PyObject* args)
@@ -1042,8 +1009,7 @@ static PyObject* Py_ndiGetPSTATToolInfo(PyObject* module, PyObject* args)
     return PyString_FromString("UNOCCUPIED");
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATCurrentTest(PyObject* module, PyObject* args)
@@ -1059,8 +1025,7 @@ static PyObject* Py_ndiGetPSTATCurrentTest(PyObject* module, PyObject* args)
     return PyLong_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATPartNumber(PyObject* module, PyObject* args)
@@ -1080,8 +1045,7 @@ static PyObject* Py_ndiGetPSTATPartNumber(PyObject* module, PyObject* args)
     return PyString_FromStringAndSize(result, 20);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATAccessories(PyObject* module, PyObject* args)
@@ -1097,8 +1061,7 @@ static PyObject* Py_ndiGetPSTATAccessories(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetPSTATMarkerType(PyObject* module, PyObject* args)
@@ -1114,8 +1077,7 @@ static PyObject* Py_ndiGetPSTATMarkerType(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetSSTATControl(PyObject* module, PyObject* args)
@@ -1130,8 +1092,7 @@ static PyObject* Py_ndiGetSSTATControl(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetSSTATSensors(PyObject* module, PyObject* args)
@@ -1146,8 +1107,7 @@ static PyObject* Py_ndiGetSSTATSensors(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetSSTATTIU(PyObject* module, PyObject* args)
@@ -1162,8 +1122,7 @@ static PyObject* Py_ndiGetSSTATTIU(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetIRCHKDetected(PyObject* module, PyObject* args)
@@ -1178,8 +1137,7 @@ static PyObject* Py_ndiGetIRCHKDetected(PyObject* module, PyObject* args)
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetIRCHKNumberOfSources(PyObject* module, PyObject* args)
@@ -1195,8 +1153,7 @@ static PyObject* Py_ndiGetIRCHKNumberOfSources(PyObject* module, PyObject* args)
     return PyInt_FromLong(result);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiGetIRCHKSourceXY(PyObject* module, PyObject* args)
@@ -1219,8 +1176,7 @@ static PyObject* Py_ndiGetIRCHKSourceXY(PyObject* module, PyObject* args)
     return Py_BuildValue("(ff)", xy[0], xy[1]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiRelativeTransform(PyObject* module, PyObject* args)
@@ -1240,8 +1196,7 @@ static PyObject* Py_ndiRelativeTransform(PyObject* module, PyObject* args)
                          a[4], a[5], a[6], a[7]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiTransformToMatrixd(PyObject* module, PyObject* args)
@@ -1260,8 +1215,7 @@ static PyObject* Py_ndiTransformToMatrixd(PyObject* module, PyObject* args)
                          c[8], c[9], c[10], c[11], c[12], c[13], c[14], c[15]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiTransformToMatrixf(PyObject* module, PyObject* args)
@@ -1280,8 +1234,7 @@ static PyObject* Py_ndiTransformToMatrixf(PyObject* module, PyObject* args)
                          c[8], c[9], c[10], c[11], c[12], c[13], c[14], c[15]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiAnglesFromMatrixd(PyObject* module, PyObject* args)
@@ -1300,8 +1253,7 @@ static PyObject* Py_ndiAnglesFromMatrixd(PyObject* module, PyObject* args)
     return Py_BuildValue("(ddd)", c[0], c[1], c[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiAnglesFromMatrixf(PyObject* module, PyObject* args)
@@ -1320,8 +1272,7 @@ static PyObject* Py_ndiAnglesFromMatrixf(PyObject* module, PyObject* args)
     return Py_BuildValue("(fff)", c[0], c[1], c[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiCoordsFromMatrixd(PyObject* module, PyObject* args)
@@ -1340,8 +1291,7 @@ static PyObject* Py_ndiCoordsFromMatrixd(PyObject* module, PyObject* args)
     return Py_BuildValue("(ddd)", c[0], c[1], c[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 static PyObject* Py_ndiCoordsFromMatrixf(PyObject* module, PyObject* args)
@@ -1360,8 +1310,7 @@ static PyObject* Py_ndiCoordsFromMatrixf(PyObject* module, PyObject* args)
     return Py_BuildValue("(fff)", c[0], c[1], c[2]);
   }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return NULL;
 }
 
 /*=================================================================
