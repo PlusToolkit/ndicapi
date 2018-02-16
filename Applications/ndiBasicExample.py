@@ -1,6 +1,7 @@
 from pyndicapi import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
-    ndiOpen, ndiClose
+    ndiOpen, ndiClose, ndiCommand, ndiGetError,
+    ndiErrorString,
 )
 
 
@@ -31,6 +32,14 @@ if __name__ == '__main__':
         raise IOError(
             'Could not connect to NDI device found on '
             '{}'.format(name)
+        )
+
+    reply = ndiCommand(device, 'INIT:')
+    error = ndiGetError(device)
+    if reply.startswith('ERROR') or error != NDI_OKAY:
+        raise IOError(
+            'Error when sending command: '
+            '{}'.format(ndiErrorString(error))
         )
 
     ndiClose(device)
