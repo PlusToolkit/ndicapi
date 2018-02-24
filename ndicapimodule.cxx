@@ -115,20 +115,20 @@ typedef struct
 PyObject* PyNDIBitfield_FromUnsignedLong(unsigned long ival);
 
 static void
-bitfield_dealloc(PyLongObject* v)
+bitfield_dealloc(PyIntObject* v)
 {
   PyMem_DEL(v);
 }
 
 static int
-bitfield_print(PyLongObject* v, FILE* fp, int flags/* Not used but required by interface */)
+bitfield_print(PyIntObject* v, FILE* fp, int flags/* Not used but required by interface */)
 {
   fprintf(fp, "0x%lX", v->ob_ival);
   return 0;
 }
 
 static PyObject*
-bitfield_repr(PyLongObject* v)
+bitfield_repr(PyIntObject* v)
 {
   char buf[20];
   sprintf(buf, "0x%lX", v->ob_ival);
@@ -136,7 +136,7 @@ bitfield_repr(PyLongObject* v)
 }
 
 static int
-bitfield_compare(PyLongObject* v, PyLongObject* w)
+bitfield_compare(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long i = v->ob_ival;
   register unsigned long j = w->ob_ival;
@@ -144,19 +144,19 @@ bitfield_compare(PyLongObject* v, PyLongObject* w)
 }
 
 static int
-bitfield_nonzero(PyLongObject* v)
+bitfield_nonzero(PyIntObject* v)
 {
   return v->ob_ival != 0;
 }
 
 static PyObject*
-bitfield_invert(PyLongObject* v)
+bitfield_invert(PyIntObject* v)
 {
   return PyNDIBitfield_FromUnsignedLong(~v->ob_ival);
 }
 
 static PyObject*
-bitfield_lshift(PyLongObject* v, PyLongObject* w)
+bitfield_lshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -180,7 +180,7 @@ bitfield_lshift(PyLongObject* v, PyLongObject* w)
 }
 
 static PyObject*
-bitfield_rshift(PyLongObject* v, PyLongObject* w)
+bitfield_rshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -213,7 +213,7 @@ bitfield_rshift(PyLongObject* v, PyLongObject* w)
 }
 
 static PyObject*
-bitfield_and(PyLongObject* v, PyLongObject* w)
+bitfield_and(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -222,7 +222,7 @@ bitfield_and(PyLongObject* v, PyLongObject* w)
 }
 
 static PyObject*
-bitfield_xor(PyLongObject* v, PyLongObject* w)
+bitfield_xor(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -231,7 +231,7 @@ bitfield_xor(PyLongObject* v, PyLongObject* w)
 }
 
 static PyObject*
-bitfield_or(PyLongObject* v, PyLongObject* w)
+bitfield_or(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
   a = v->ob_ival;
@@ -242,9 +242,9 @@ bitfield_or(PyLongObject* v, PyLongObject* w)
 static int
 bitfield_coerce(PyObject** pv, PyObject** pw)
 {
-  if (PyLong_Check(*pw))
+  if (PyInt_Check(*pw))
   {
-    *pw = PyNDIBitfield_FromUnsignedLong(PyLong_AsLong(*pw));
+    *pw = PyNDIBitfield_FromUnsignedLong(PyInt_AsLong(*pw));
     Py_INCREF(*pv);
     return 0;
   }
@@ -258,25 +258,25 @@ bitfield_coerce(PyObject** pv, PyObject** pw)
 }
 
 static PyObject*
-bitfield_int(PyLongObject* v)
+bitfield_int(PyIntObject* v)
+{
+  return PyInt_FromLong((v -> ob_ival));
+}
+
+static PyObject*
+bitfield_long(PyIntObject* v)
 {
   return PyLong_FromLong((v -> ob_ival));
 }
 
 static PyObject*
-bitfield_long(PyLongObject* v)
-{
-  return PyLong_FromLong((v -> ob_ival));
-}
-
-static PyObject*
-bitfield_float(PyLongObject* v)
+bitfield_float(PyIntObject* v)
 {
   return PyFloat_FromDouble((double)(v -> ob_ival));
 }
 
 static PyObject*
-bitfield_oct(PyLongObject* v)
+bitfield_oct(PyIntObject* v)
 {
   char buf[100];
   long x = v -> ob_ival;
@@ -288,7 +288,7 @@ bitfield_oct(PyLongObject* v)
 }
 
 static PyObject*
-bitfield_hex(PyLongObject* v)
+bitfield_hex(PyIntObject* v)
 {
   char buf[100];
   long x = v -> ob_ival;
@@ -328,7 +328,7 @@ PyTypeObject PyNDIBitfield_Type =
   PyObject_HEAD_INIT(0)  /* (&PyType_Type) */
   0,
   "bitfield",
-  sizeof(PyLongObject),
+  sizeof(PyIntObject),
   0,
   (destructor)bitfield_dealloc, /*tp_dealloc*/
   (printfunc)bitfield_print, /*tp_print*/
@@ -434,7 +434,7 @@ static PyObject* Py_ndiSignedToLong(PyObject* module, PyObject* args)
   if (PyArg_ParseTuple(args, "si:plSignedToLong", &cp, &n))
   {
     result = ndiSignedToLong(cp, n);
-    return PyLong_FromLong(result);
+    return PyInt_FromLong(result);
   }
 
   return NULL;
@@ -944,7 +944,7 @@ static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
                        &_ndiConverter, &pol))
   {
     result = ndiGetGXNumberOfPassiveStrays(pol);
-    return PyLong_FromLong(result);
+    return PyInt_FromLong(result);
   }
 
   return NULL;
@@ -1150,7 +1150,7 @@ static PyObject* Py_ndiGetIRCHKNumberOfSources(PyObject* module, PyObject* args)
                        &_ndiConverter, &pol, &side))
   {
     result = ndiGetIRCHKNumberOfSources(pol, side);
-    return PyLong_FromLong(result);
+    return PyInt_FromLong(result);
   }
 
   return NULL;
@@ -1421,7 +1421,7 @@ extern "C" {
 #define Py_NDIBitfieldMacro(a) \
      PyDict_SetItemString(dict, #a, PyNDIBitfield_FromUnsignedLong(a))
 #define Py_NDIConstantMacro(a) \
-     PyDict_SetItemString(dict, #a, PyLong_FromLong(a))
+     PyDict_SetItemString(dict, #a, PyInt_FromLong(a))
 #define Py_NDIErrcodeMacro(a) \
      PyDict_SetItemString(dict, #a, PyNDIBitfield_FromUnsignedLong(a))
 #define Py_NDICharMacro(a) \
