@@ -8,6 +8,29 @@
 // Python includes
 #include <Python.h>
 
+// Conditional definitions for Python-version-based compilation
+#if PY_MAJOR_VERSION >= 3
+  #define MOD_ERROR_VAL NULL
+  #define MOD_SUCCESS_VAL(val) val
+  #define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
+  #define MOD_DEF(ob, name, doc, methods) \
+          static struct PyModuleDef moduledef = { \
+            PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
+          ob = PyModule_Create(&moduledef);
+  #define PyInt_FromLong PyLong_FromLong
+  #define PyInt_Check PyLong_Check
+  #define PyInt_AsLong PyLong_AsLong
+  #define PyString_FromString PyUnicode_FromString
+  #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+  #define PyString_Format PyUnicode_Format
+#else
+  #define MOD_ERROR_VAL
+  #define MOD_SUCCESS_VAL(val)
+  #define MOD_INIT(name) void init##name(void)
+  #define MOD_DEF(ob, name, doc, methods) \
+          ob = Py_InitModule3(name, methods, doc);
+#endif
+
 //--------------------------------------------------------------
 // PyNdicapi structure
 typedef struct
@@ -1424,28 +1447,6 @@ extern "C" {
      PyDict_SetItemString(dict, #a, PyNDIBitfield_FromUnsignedLong(a))
 #define Py_NDICharMacro(a) \
      PyDict_SetItemString(dict, #a, _PyString_FromChar(a))
-
-#if PY_MAJOR_VERSION >= 3
-  #define MOD_ERROR_VAL NULL
-  #define MOD_SUCCESS_VAL(val) val
-  #define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
-  #define MOD_DEF(ob, name, doc, methods) \
-          static struct PyModuleDef moduledef = { \
-            PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
-          ob = PyModule_Create(&moduledef);
-  #define PyInt_FromLong PyLong_FromLong
-  #define PyInt_Check PyLong_Check
-  #define PyInt_AsLong PyLong_AsLong
-  #define PyString_FromString PyUnicode_FromString
-  #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
-  #define PyString_Format PyUnicode_Format
-#else
-  #define MOD_ERROR_VAL
-  #define MOD_SUCCESS_VAL(val)
-  #define MOD_INIT(name) void init##name(void)
-  #define MOD_DEF(ob, name, doc, methods) \
-          ob = Py_InitModule3(name, methods, doc);
-#endif
 
 void ndicapiExport initpyndicapi()
 {
