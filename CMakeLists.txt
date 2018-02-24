@@ -66,6 +66,10 @@ IF(BUILD_PYTHON)
         )
     ELSE()
       SET(SETUP_PY_FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
+      CONFIGURE_FILE(
+        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+        ${SETUP_PY_FILEPATH}
+        )
       MESSAGE("Successfully generated ${SETUP_PY_FILEPATH} for the Python"
 	      " extension module. To install the Python extension module:"
 	      "\n\t0) Install the C++ library: make && make install"
@@ -74,11 +78,6 @@ IF(BUILD_PYTHON)
 	      "\n\t2) Build the Python extension: python setup.py build"
 	      "\n\t3) Install the Python extension: python setup.py install"
 	      " (might need admin access)"
-        )
-
-      CONFIGURE_FILE(
-        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-        ${SETUP_PY_FILEPATH}
         )
     ENDIF()
   ENDIF()
