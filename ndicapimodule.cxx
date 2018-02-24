@@ -1433,6 +1433,9 @@ extern "C" {
           static struct PyModuleDef moduledef = { \
             PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
           ob = PyModule_Create(&moduledef);
+  #define PyInt_FromLong PyLong_FromLong
+  #define PyInt_Check PyLong_Check
+  #define PyInt_AsLong PyLong_AsLong
 #else
   #define MOD_ERROR_VAL
   #define MOD_SUCCESS_VAL(val)
