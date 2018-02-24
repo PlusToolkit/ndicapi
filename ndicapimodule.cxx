@@ -1436,6 +1436,9 @@ extern "C" {
   #define PyInt_FromLong PyLong_FromLong
   #define PyInt_Check PyLong_Check
   #define PyInt_AsLong PyLong_AsLong
+  #define PyString_FromString PyUnicode_FromString
+  #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+  #define PyString_Format PyUnicode_Format
 #else
   #define MOD_ERROR_VAL
   #define MOD_SUCCESS_VAL(val)
