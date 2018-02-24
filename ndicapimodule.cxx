@@ -50,7 +50,7 @@ static PyObject* PyNdicapi_PyString(PyObject* self)
   char space[256];
 
   PyNdicapi_PrintHelper(self, space);
-  return PyString_FromString(space);
+  return PyUnicode_FromString(space);
 }
 
 static PyObject* PyNdicapi_PyRepr(PyObject* self)
@@ -58,7 +58,7 @@ static PyObject* PyNdicapi_PyRepr(PyObject* self)
   char space[256];
 
   PyNdicapi_PrintHelper(self, space);
-  return PyString_FromString(space);
+  return PyUnicode_FromString(space);
 }
 
 static PyObject* PyNdicapi_PyGetAttr(PyObject* self, char* name)
@@ -132,7 +132,7 @@ bitfield_repr(PyIntObject* v)
 {
   char buf[20];
   sprintf(buf, "0x%lX", v->ob_ival);
-  return PyString_FromString(buf);
+  return PyUnicode_FromString(buf);
 }
 
 static int
@@ -284,7 +284,7 @@ bitfield_oct(PyIntObject* v)
   { strcpy(buf, "0"); }
   else
   { sprintf(buf, "0%lo", x); }
-  return PyString_FromString(buf);
+  return PyUnicode_FromString(buf);
 }
 
 static PyObject*
@@ -293,7 +293,7 @@ bitfield_hex(PyIntObject* v)
   char buf[100];
   long x = v -> ob_ival;
   sprintf(buf, "0x%lx", x);
-  return PyString_FromString(buf);
+  return PyUnicode_FromString(buf);
 }
 
 static PyNumberMethods bitfield_as_number =
@@ -403,7 +403,7 @@ static int _ndiConverter(PyObject* obj, ndicapi** polptr)
 
 static PyObject* _PyString_FromChar(char value)
 {
-  return PyString_FromStringAndSize(&value, 1);
+  return PyUnicode_FromStringAndSize(&value, 1);
 }
 
 /*=================================================================
@@ -458,7 +458,7 @@ static PyObject* Py_ndiHexEncode(PyObject* module, PyObject* args)
       return NULL;
     }
     result = ndiHexEncode(cp, data, n);
-    obj = PyString_FromStringAndSize(result, 2 * n);
+    obj = PyUnicode_FromStringAndSize(result, 2 * n);
     free(cp);
     return obj;
   }
@@ -484,7 +484,7 @@ static PyObject* Py_ndiHexDecode(PyObject* module, PyObject* args)
       return NULL;
     }
     result = ndiHexEncode((char*)data, cp, n);
-    obj = PyString_FromStringAndSize((char*)result, n);
+    obj = PyUnicode_FromStringAndSize((char*)result, n);
     free(data);
     return obj;
   }
@@ -514,7 +514,7 @@ static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
   if (PyArg_ParseTuple(args, "i:plErrorString", &errnum))
   {
     result = ndiErrorString(errnum);
-    return PyString_FromString(result);
+    return PyUnicode_FromString(result);
   }
 
   return NULL;
@@ -530,7 +530,7 @@ static PyObject* Py_ndiDeviceName(PyObject* module, PyObject* args)
     result = ndiSerialDeviceName(n);
     if (result)
     {
-      return PyString_FromString(result);
+      return PyUnicode_FromString(result);
     }
     else
     {
@@ -592,7 +592,7 @@ static PyObject* Py_ndiGetDeviceName(PyObject* module, PyObject* args)
       Py_INCREF(Py_None);
       return Py_None;
     }
-    return PyString_FromString(result);
+    return PyUnicode_FromString(result);
   }
 
   return NULL;
@@ -660,7 +660,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   if (format != NULL)
   {
     obj = PySequence_GetItem(args, 1);
-    newstring = PyString_Format(obj, remainder);
+    newstring = PyUnicode_Format(obj, remainder);
     Py_DECREF(obj);
     Py_DECREF(initial);
     Py_DECREF(remainder);
@@ -670,7 +670,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
       return NULL;
     }
 
-    result = ndiCommand(pol, "%s", PyString_AsString(newstring));
+    result = ndiCommand(pol, "%s", PyUnicode_AsString(newstring));
   }
   else
   {
@@ -689,7 +689,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   }
   else
   {
-    obj = PyString_FromString(result);
+    obj = PyUnicode_FromString(result);
   }
 
   return _ndiErrorHelper(ndiGetError(pol), obj);
@@ -715,7 +715,7 @@ static PyObject* Py_ndiCommand2(PyObject* module, char* format, PyObject* args)
 
   if (format != NULL)
   {
-    obj = PyString_FromString(format);
+    obj = PyUnicode_FromString(format);
   }
   else
   {
@@ -812,11 +812,11 @@ static PyObject* Py_ndiGetGXTransform(PyObject* module, PyObject* args)
 
     if (result == NDI_MISSING)
     {
-      return PyString_FromString("MISSING");
+      return PyUnicode_FromString("MISSING");
     }
     else if (result == NDI_DISABLED)
     {
-      return PyString_FromString("DISABLED");
+      return PyUnicode_FromString("DISABLED");
     }
 
     return Py_BuildValue("(dddddddd)", transform[0], transform[1],
@@ -905,11 +905,11 @@ static PyObject* Py_ndiGetGXSingleStray(PyObject* module, PyObject* args)
 
     if (result == NDI_MISSING)
     {
-      return PyString_FromString("MISSING");
+      return PyUnicode_FromString("MISSING");
     }
     else if (result == NDI_DISABLED)
     {
-      return PyString_FromString("DISABLED");
+      return PyUnicode_FromString("DISABLED");
     }
 
     return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
@@ -964,11 +964,11 @@ static PyObject* Py_ndiGetGXPassiveStray(PyObject* module, PyObject* args)
 
     if (result == NDI_MISSING)
     {
-      return PyString_FromString("MISSING");
+      return PyUnicode_FromString("MISSING");
     }
     else if (result == NDI_DISABLED)
     {
-      return PyString_FromString("DISABLED");
+      return PyUnicode_FromString("DISABLED");
     }
 
     return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
@@ -1004,9 +1004,9 @@ static PyObject* Py_ndiGetPSTATToolInfo(PyObject* module, PyObject* args)
   {
     if (ndiGetPSTATToolInfo(pol, port, result) != NDI_UNOCCUPIED)
     {
-      return PyString_FromStringAndSize(result, 30);
+      return PyUnicode_FromStringAndSize(result, 30);
     }
-    return PyString_FromString("UNOCCUPIED");
+    return PyUnicode_FromString("UNOCCUPIED");
   }
 
   return NULL;
@@ -1042,7 +1042,7 @@ static PyObject* Py_ndiGetPSTATPartNumber(PyObject* module, PyObject* args)
       Py_INCREF(Py_None);
       return Py_None;
     }
-    return PyString_FromStringAndSize(result, 20);
+    return PyUnicode_FromStringAndSize(result, 20);
   }
 
   return NULL;
