@@ -1629,6 +1629,8 @@ void ndicapiExport initpyndicapi()
 
   Py_NDIConstantMacro(NDI_LEFT);
   Py_NDIConstantMacro(NDI_RIGHT);
+
+  return MOD_SUCCESS_VAL(module);
 }
 
 #ifdef __cplusplus
