@@ -75,15 +75,6 @@ IF(BUILD_PYTHON)
 	      "\n\t3) Install the Python extension: python setup.py install"
 	      " (might need admin access)"
         )
-      LIST(APPEND ${PROJECT_NAME}_SRCS
-        ndicapimodule.cxx
-        )
-      LIST(APPEND ${PROJECT_NAME}_INCLUDE_DIRS
-        ${PYTHON_INCLUDE_DIRS}
-        )
-      LIST(APPEND ${PROJECT_NAME}_LIBS
-        ${PYTHON_LIBRARIES}
-        )
 
       CONFIGURE_FILE(
         ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
