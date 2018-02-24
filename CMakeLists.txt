@@ -62,14 +62,15 @@ IF(BUILD_PYTHON)
     ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
     ${SETUP_PY_FILEPATH}
     )
-  MESSAGE("Successfully generated ${SETUP_PY_FILEPATH} for the Python"
-          " extension module. To install the Python extension module:"
-          "\n\t0) Install the C++ library: make && make install"
-          " (might need admin access)"
-          "\n\t1) Go to ${CMAKE_CURRENT_SOURCE_DIR}"
-          "\n\t2) Build the Python extension: python setup.py build"
-          "\n\t3) Install the Python extension: python setup.py install"
-          " (might need admin access)"
+  MESSAGE(
+    "Successfully generated ${SETUP_PY_FILEPATH} for the Python"
+    " extension module. To install the Python extension module:"
+    "\n\t0) Install the C++ library: make && make install"
+    " (might need admin access)"
+    "\n\t1) Go to ${CMAKE_CURRENT_SOURCE_DIR}"
+    "\n\t2) Build the Python extension: python setup.py build"
+    "\n\t3) Install the Python extension: python setup.py install"
+    " (might need admin access)"
     )
 ENDIF()
 
