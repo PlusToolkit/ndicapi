@@ -72,8 +72,7 @@ static PyObject* PyNdicapi_PyGetAttr(PyObject* self, char* name)
 
 static PyTypeObject PyNdicapiType =
 {
-  PyObject_HEAD_INIT(NULL) /* (&PyType_Type) */
-  0,
+  PyVarObject_HEAD_INIT(NULL, 0) /* (&PyType_Type) */
   "ndicapi",                                                  /* tp_name */
   sizeof(PyNdicapi),                                          /* tp_basicsize */
   0,                                                          /* tp_itemsize */
@@ -325,8 +324,7 @@ static PyNumberMethods bitfield_as_number =
 
 PyTypeObject PyNDIBitfield_Type =
 {
-  PyObject_HEAD_INIT(0)  /* (&PyType_Type) */
-  0,
+  PyVarObject_HEAD_INIT(NULL, 0)  /* (&PyType_Type) */
   "bitfield",
   sizeof(PyIntObject),
   0,
