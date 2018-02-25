@@ -26,6 +26,7 @@
   #define PyString_AsString PyUnicode_AsUnicode
   #define PyIntObject PyLongObject
   #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
+  #define cmpfunc PyAsyncMethods*
 #else
   #define MOD_ERROR_VAL
   #define MOD_SUCCESS_VAL(val)
