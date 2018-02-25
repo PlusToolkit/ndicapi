@@ -8,6 +8,34 @@
 // Python includes
 #include <Python.h>
 
+// Conditional definitions for Python-version-based compilation
+#if PY_MAJOR_VERSION >= 3
+  #define MOD_ERROR_VAL NULL
+  #define MOD_SUCCESS_VAL(val) val
+  #define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
+  #define MOD_DEF(ob, name, doc, methods) \
+          static struct PyModuleDef moduledef = { \
+            PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
+          ob = PyModule_Create(&moduledef);
+  #define PyInt_FromLong PyLong_FromLong
+  #define PyInt_Check PyLong_Check
+  #define PyInt_AsLong PyLong_AsLong
+  #define PyString_FromString PyUnicode_FromString
+  #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
+  #define PyString_Format PyUnicode_Format
+  #define PyString_AsString PyUnicode_AsUnicode
+  #define PyIntObject PyLongObject
+  #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
+  #define cmpfunc PyAsyncMethods*
+#else
+  #define MOD_ERROR_VAL
+  #define MOD_SUCCESS_VAL(val)
+  #define MOD_INIT(name) void init##name(void)
+  #define MOD_DEF(ob, name, doc, methods) \
+          ob = Py_InitModule3(name, methods, doc);
+  #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_ival
+#endif
+
 //--------------------------------------------------------------
 // PyNdicapi structure
 typedef struct
@@ -72,8 +100,7 @@ static PyObject* PyNdicapi_PyGetAttr(PyObject* self, char* name)
 
 static PyTypeObject PyNdicapiType =
 {
-  PyObject_HEAD_INIT(NULL) /* (&PyType_Type) */
-  0,
+  PyVarObject_HEAD_INIT(NULL, 0) /* (&PyType_Type) */
   "ndicapi",                                                  /* tp_name */
   sizeof(PyNdicapi),                                          /* tp_basicsize */
   0,                                                          /* tp_itemsize */
@@ -123,7 +150,7 @@ bitfield_dealloc(PyIntObject* v)
 static int
 bitfield_print(PyIntObject* v, FILE* fp, int flags/* Not used but required by interface */)
 {
-  fprintf(fp, "0x%lX", v->ob_ival);
+  fprintf(fp, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
   return 0;
 }
 
@@ -131,36 +158,36 @@ static PyObject*
 bitfield_repr(PyIntObject* v)
 {
   char buf[20];
-  sprintf(buf, "0x%lX", v->ob_ival);
+  sprintf(buf, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
   return PyString_FromString(buf);
 }
 
 static int
 bitfield_compare(PyIntObject* v, PyIntObject* w)
 {
-  register unsigned long i = v->ob_ival;
-  register unsigned long j = w->ob_ival;
+  register unsigned long i = PY_INT_OBJECT_OB_IVAL(v);
+  register unsigned long j = PY_INT_OBJECT_OB_IVAL(w);
   return (i < j) ? -1 : (i > j) ? 1 : 0;
 }
 
 static int
 bitfield_nonzero(PyIntObject* v)
 {
-  return v->ob_ival != 0;
+  return PY_INT_OBJECT_OB_IVAL(v) != 0;
 }
 
 static PyObject*
 bitfield_invert(PyIntObject* v)
 {
-  return PyNDIBitfield_FromUnsignedLong(~v->ob_ival);
+  return PyNDIBitfield_FromUnsignedLong(~(PY_INT_OBJECT_OB_IVAL(v)));
 }
 
 static PyObject*
 bitfield_lshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
@@ -183,8 +210,8 @@ static PyObject*
 bitfield_rshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
@@ -216,8 +243,8 @@ static PyObject*
 bitfield_and(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a & b);
 }
 
@@ -225,8 +252,8 @@ static PyObject*
 bitfield_xor(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a ^ b);
 }
 
@@ -234,8 +261,8 @@ static PyObject*
 bitfield_or(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a | b);
 }
 
@@ -260,26 +287,26 @@ bitfield_coerce(PyObject** pv, PyObject** pw)
 static PyObject*
 bitfield_int(PyIntObject* v)
 {
-  return PyInt_FromLong((v -> ob_ival));
+  return PyInt_FromLong(PY_INT_OBJECT_OB_IVAL(v));
 }
 
 static PyObject*
 bitfield_long(PyIntObject* v)
 {
-  return PyLong_FromLong((v -> ob_ival));
+  return PyLong_FromLong(PY_INT_OBJECT_OB_IVAL(v));
 }
 
 static PyObject*
 bitfield_float(PyIntObject* v)
 {
-  return PyFloat_FromDouble((double)(v -> ob_ival));
+  return PyFloat_FromDouble((double)(PY_INT_OBJECT_OB_IVAL(v)));
 }
 
 static PyObject*
 bitfield_oct(PyIntObject* v)
 {
   char buf[100];
-  long x = v -> ob_ival;
+  long x = PY_INT_OBJECT_OB_IVAL(v);
   if (x == 0)
   { strcpy(buf, "0"); }
   else
@@ -291,7 +318,7 @@ static PyObject*
 bitfield_hex(PyIntObject* v)
 {
   char buf[100];
-  long x = v -> ob_ival;
+  long x = PY_INT_OBJECT_OB_IVAL(v);
   sprintf(buf, "0x%lx", x);
   return PyString_FromString(buf);
 }
@@ -301,7 +328,9 @@ static PyNumberMethods bitfield_as_number =
   (binaryfunc)0, /*nb_add*/
   (binaryfunc)0, /*nb_subtract*/
   (binaryfunc)0, /*nb_multiply*/
+#if PY_MAJOR_VERSION <= 2
   (binaryfunc)0, /*nb_divide*/
+#endif
   (binaryfunc)0, /*nb_remainder*/
   (binaryfunc)0, /*nb_divmod*/
   (ternaryfunc)0, /*nb_power*/
@@ -315,18 +344,26 @@ static PyNumberMethods bitfield_as_number =
   (binaryfunc)bitfield_and, /*nb_and*/
   (binaryfunc)bitfield_xor, /*nb_xor*/
   (binaryfunc)bitfield_or, /*nb_or*/
+#if PY_MAJOR_VERSION <= 2
   (coercion)bitfield_coerce, /*nb_coerce*/
+#endif
   (unaryfunc)bitfield_int, /*nb_int*/
+#if PY_MAJOR_VERSION >= 3
+  (void *)0, /*nb_reserved*/
+#endif
+#if PY_MAJOR_VERSION <= 2
   (unaryfunc)bitfield_long, /*nb_long*/
+#endif
   (unaryfunc)bitfield_float, /*nb_float*/
+#if PY_MAJOR_VERSION <= 2
   (unaryfunc)bitfield_oct, /*nb_oct*/
   (unaryfunc)bitfield_hex, /*nb_hex*/
+#endif
 };
 
 PyTypeObject PyNDIBitfield_Type =
 {
-  PyObject_HEAD_INIT(0)  /* (&PyType_Type) */
-  0,
+  PyVarObject_HEAD_INIT(NULL, 0)  /* (&PyType_Type) */
   "bitfield",
   sizeof(PyIntObject),
   0,
@@ -1427,15 +1464,20 @@ extern "C" {
 #define Py_NDICharMacro(a) \
      PyDict_SetItemString(dict, #a, _PyString_FromChar(a))
 
-void ndicapiExport initpyndicapi()
+ndicapiExport MOD_INIT(ndicapy)
 {
   PyObject* module;
   PyObject* dict;
 
+#if PY_MAJOR_VERSION <= 2
   PyNdicapiType.ob_type = &PyType_Type;
   PyNDIBitfield_Type.ob_type = &PyType_Type;
+#else
+  Py_TYPE(&PyNdicapiType) = &PyType_Type;
+  Py_TYPE(&PyNDIBitfield_Type) = &PyType_Type;
+#endif
 
-  module = Py_InitModule("pyndicapi", NdicapiMethods);
+  MOD_DEF(module, "ndicapy", NULL, NdicapiMethods);
   dict = PyModule_GetDict(module);
 
   Py_NDIConstantMacro(NDICAPI_MAJOR_VERSION);
@@ -1613,6 +1655,8 @@ void ndicapiExport initpyndicapi()
 
   Py_NDIConstantMacro(NDI_LEFT);
   Py_NDIConstantMacro(NDI_RIGHT);
+
+  return MOD_SUCCESS_VAL(module);
 }
 
 #ifdef __cplusplus
