@@ -328,7 +328,9 @@ static PyNumberMethods bitfield_as_number =
   (binaryfunc)0, /*nb_add*/
   (binaryfunc)0, /*nb_subtract*/
   (binaryfunc)0, /*nb_multiply*/
+#if PY_MAJOR_VERSION <= 2
   (binaryfunc)0, /*nb_divide*/
+#endif
   (binaryfunc)0, /*nb_remainder*/
   (binaryfunc)0, /*nb_divmod*/
   (ternaryfunc)0, /*nb_power*/
@@ -342,12 +344,21 @@ static PyNumberMethods bitfield_as_number =
   (binaryfunc)bitfield_and, /*nb_and*/
   (binaryfunc)bitfield_xor, /*nb_xor*/
   (binaryfunc)bitfield_or, /*nb_or*/
+#if PY_MAJOR_VERSION <= 2
   (coercion)bitfield_coerce, /*nb_coerce*/
+#endif
   (unaryfunc)bitfield_int, /*nb_int*/
+#if PY_MAJOR_VERSION >= 3
+  (void *)0, /*nb_reserved*/
+#endif
+#if PY_MAJOR_VERSION <= 2
   (unaryfunc)bitfield_long, /*nb_long*/
+#endif
   (unaryfunc)bitfield_float, /*nb_float*/
+#if PY_MAJOR_VERSION <= 2
   (unaryfunc)bitfield_oct, /*nb_oct*/
   (unaryfunc)bitfield_hex, /*nb_hex*/
+#endif
 };
 
 PyTypeObject PyNDIBitfield_Type =
