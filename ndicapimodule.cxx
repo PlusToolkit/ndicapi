@@ -1469,8 +1469,13 @@ ndicapiExport MOD_INIT(pyndicapi)
   PyObject* module;
   PyObject* dict;
 
+#if PY_MAJOR_VERSION <= 2
   PyNdicapiType.ob_type = &PyType_Type;
   PyNDIBitfield_Type.ob_type = &PyType_Type;
+#else
+  Py_TYPE(&PyNdicapiType) = &PyType_Type;
+  Py_TYPE(&PyNDIBitfield_Type) = &PyType_Type;
+#endif
 
   MOD_DEF(module, "pyndicapi", NULL, NdicapiMethods);
   dict = PyModule_GetDict(module);
