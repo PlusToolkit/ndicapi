@@ -23,12 +23,15 @@
   #define PyString_FromString PyUnicode_FromString
   #define PyString_FromStringAndSize PyUnicode_FromStringAndSize
   #define PyString_Format PyUnicode_Format
+  #define PyIntObject PyLongObject
+  #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
 #else
   #define MOD_ERROR_VAL
   #define MOD_SUCCESS_VAL(val)
   #define MOD_INIT(name) void init##name(void)
   #define MOD_DEF(ob, name, doc, methods) \
           ob = Py_InitModule3(name, methods, doc);
+  #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_ival
 #endif
 
 //--------------------------------------------------------------
@@ -145,7 +148,7 @@ bitfield_dealloc(PyIntObject* v)
 static int
 bitfield_print(PyIntObject* v, FILE* fp, int flags/* Not used but required by interface */)
 {
-  fprintf(fp, "0x%lX", v->ob_ival);
+  fprintf(fp, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
   return 0;
 }
 
@@ -153,36 +156,36 @@ static PyObject*
 bitfield_repr(PyIntObject* v)
 {
   char buf[20];
-  sprintf(buf, "0x%lX", v->ob_ival);
+  sprintf(buf, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
   return PyString_FromString(buf);
 }
 
 static int
 bitfield_compare(PyIntObject* v, PyIntObject* w)
 {
-  register unsigned long i = v->ob_ival;
-  register unsigned long j = w->ob_ival;
+  register unsigned long i = PY_INT_OBJECT_OB_IVAL(v);
+  register unsigned long j = PY_INT_OBJECT_OB_IVAL(w);
   return (i < j) ? -1 : (i > j) ? 1 : 0;
 }
 
 static int
 bitfield_nonzero(PyIntObject* v)
 {
-  return v->ob_ival != 0;
+  return PY_INT_OBJECT_OB_IVAL(v) != 0;
 }
 
 static PyObject*
 bitfield_invert(PyIntObject* v)
 {
-  return PyNDIBitfield_FromUnsignedLong(~v->ob_ival);
+  return PyNDIBitfield_FromUnsignedLong(~(PY_INT_OBJECT_OB_IVAL(v)));
 }
 
 static PyObject*
 bitfield_lshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
@@ -205,8 +208,8 @@ static PyObject*
 bitfield_rshift(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
   {
     PyErr_SetString(PyExc_ValueError, "negative shift count");
@@ -238,8 +241,8 @@ static PyObject*
 bitfield_and(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a & b);
 }
 
@@ -247,8 +250,8 @@ static PyObject*
 bitfield_xor(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a ^ b);
 }
 
@@ -256,8 +259,8 @@ static PyObject*
 bitfield_or(PyIntObject* v, PyIntObject* w)
 {
   register unsigned long a, b;
-  a = v->ob_ival;
-  b = w->ob_ival;
+  a = PY_INT_OBJECT_OB_IVAL(v);
+  b = PY_INT_OBJECT_OB_IVAL(w);
   return PyNDIBitfield_FromUnsignedLong(a | b);
 }
 
@@ -282,26 +285,26 @@ bitfield_coerce(PyObject** pv, PyObject** pw)
 static PyObject*
 bitfield_int(PyIntObject* v)
 {
-  return PyInt_FromLong((v -> ob_ival));
+  return PyInt_FromLong(PY_INT_OBJECT_OB_IVAL(v));
 }
 
 static PyObject*
 bitfield_long(PyIntObject* v)
 {
-  return PyLong_FromLong((v -> ob_ival));
+  return PyLong_FromLong(PY_INT_OBJECT_OB_IVAL(v));
 }
 
 static PyObject*
 bitfield_float(PyIntObject* v)
 {
-  return PyFloat_FromDouble((double)(v -> ob_ival));
+  return PyFloat_FromDouble((double)(PY_INT_OBJECT_OB_IVAL(v)));
 }
 
 static PyObject*
 bitfield_oct(PyIntObject* v)
 {
   char buf[100];
-  long x = v -> ob_ival;
+  long x = PY_INT_OBJECT_OB_IVAL(v);
   if (x == 0)
   { strcpy(buf, "0"); }
   else
@@ -313,7 +316,7 @@ static PyObject*
 bitfield_hex(PyIntObject* v)
 {
   char buf[100];
-  long x = v -> ob_ival;
+  long x = PY_INT_OBJECT_OB_IVAL(v);
   sprintf(buf, "0x%lx", x);
   return PyString_FromString(buf);
 }
