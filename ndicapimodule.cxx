@@ -1464,7 +1464,7 @@ extern "C" {
 #define Py_NDICharMacro(a) \
      PyDict_SetItemString(dict, #a, _PyString_FromChar(a))
 
-ndicapiExport MOD_INIT(pyndicapi)
+ndicapiExport MOD_INIT(ndicapy)
 {
   PyObject* module;
   PyObject* dict;
@@ -1477,7 +1477,7 @@ ndicapiExport MOD_INIT(pyndicapi)
   Py_TYPE(&PyNDIBitfield_Type) = &PyType_Type;
 #endif
 
-  MOD_DEF(module, "pyndicapi", NULL, NdicapiMethods);
+  MOD_DEF(module, "ndicapy", NULL, NdicapiMethods);
   dict = PyModule_GetDict(module);
 
   Py_NDIConstantMacro(NDICAPI_MAJOR_VERSION);

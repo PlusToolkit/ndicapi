@@ -14,7 +14,7 @@ if platform.startswith(mac_indicator):
     extra_link_args.append('-rpath')         # tell linker to resolve RPATH to:
     extra_link_args.append(cxx_library_dir)  # cxx_library_dir, on Mac
 
-module1 = Extension('pyndicapi',
+module1 = Extension('ndicapy',
                     sources=[
                         'ndicapi.cxx',
                         'ndicapi_math.cxx',
@@ -28,7 +28,7 @@ module1 = Extension('pyndicapi',
                     runtime_library_dirs=[cxx_library_dir],
                     )
 
-setup(name='pyndicapi',
+setup(name='ndicapy',
       version='3.2',
       description='This package allows interfacing with NDI tracking devices',
       ext_modules=[module1]
