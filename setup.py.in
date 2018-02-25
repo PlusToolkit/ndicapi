@@ -28,7 +28,7 @@ module1 = Extension('ndicapy',
                     runtime_library_dirs=[cxx_library_dir],
                     )
 
-setup(name='ndicapy',
+setup(name='ndicapi',
       version='3.2',
       description='This package allows interfacing with NDI tracking devices',
       ext_modules=[module1]
