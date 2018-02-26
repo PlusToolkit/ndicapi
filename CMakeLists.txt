@@ -57,6 +57,13 @@ ENDIF()
 
 OPTION(BUILD_PYTHON "Ensure the python module will build." OFF)
 IF(BUILD_PYTHON)
+  IF(NOT BUILD_SHARED_LIBS)
+    MESSAGE(FATAL_ERROR
+      "The Python extension only works with shared libraries"
+      " (DLLs on Windows). Please enable building as a"
+      " shared library (CMake option BUILD_SHARED_LIBS)."
+      )
+  ENDIF()
   SET(SETUP_PY_FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
   CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
