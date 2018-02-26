@@ -23,15 +23,14 @@ The contents of this package have been built successfully under a wide range of 
 To build, configure first using CMake, then build according to your chosen generator.
 
 ### Python
-To build a Python (http://www.python.org) interface to this library
-1. Build **and** install the C++ library first.
-1. Then run
+To build the [Python][python] extension module of this library:
 
-```sh
-python setup.py build
-python setup.py install
->>> import ndicapy
-```
+1. Build **and** install the C++ library first.
+1. Then build and install the Python extension: `python setup.py install`
+
+[python]: http://www.python.org
+
+You can test your installation by running `python -c 'import ndicapy'`
 
 ## Contents
 The main contents of this package are as follows:
