@@ -1466,8 +1466,8 @@ extern "C" {
 
 ndicapiExport MOD_INIT(ndicapy)
 {
-  PyObject* module;
-  PyObject* dict;
+  PyObject* module = NULL;
+  PyObject* dict = NULL;
 
 #if PY_MAJOR_VERSION <= 2
   PyNdicapiType.ob_type = &PyType_Type;
@@ -1478,7 +1478,11 @@ ndicapiExport MOD_INIT(ndicapy)
 #endif
 
   MOD_DEF(module, "ndicapy", NULL, NdicapiMethods);
+  if (module == NULL)
+    return MOD_ERROR_VAL;
   dict = PyModule_GetDict(module);
+  if (dict == NULL)
+    return MOD_ERROR_VAL;
 
   Py_NDIConstantMacro(NDICAPI_MAJOR_VERSION);
   Py_NDIConstantMacro(NDICAPI_MINOR_VERSION);
