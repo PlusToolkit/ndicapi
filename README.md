@@ -26,7 +26,7 @@ To build, configure first using CMake, then build according to your chosen gener
 To build the [Python][python] extension module of this library:
 
 1. Build **and** install the C++ library first.
-1. Then build and install the Python extension: `python setup.py install`
+1. Then build and install the Python extension: `pip install .` (assuming the command is called in your repo clone directory)
 
 [python]: http://www.python.org
 
