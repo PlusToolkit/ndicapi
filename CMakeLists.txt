@@ -18,7 +18,7 @@ IF(NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
 ENDIF()
 
 IF(NOT DEFINED BUILD_SHARED_LIBS)
-  SET(BUILD_SHARED_LIBS OFF)
+  SET(BUILD_SHARED_LIBS ON)
 ENDIF()
 OPTION(BUILD_SHARED_LIBS "Build shared libraries" ${BUILD_SHARED_LIBS})
 
@@ -57,40 +57,27 @@ ENDIF()
 
 OPTION(BUILD_PYTHON "Ensure the python module will build." OFF)
 IF(BUILD_PYTHON)
-  FIND_PACKAGE(PythonInterp QUIET)
-  FIND_PACKAGE(PythonLibs QUIET)
-  IF(PYTHONLIBS_FOUND)
-    IF(NOT PYTHON_VERSION_MAJOR EQUAL 2)
-      MESSAGE(WARNING "Only python2 wrapping is supported at this time."
-        " Will not generate setup.py for Python extension."
-        )
-    ELSE()
-      SET(SETUP_PY_FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
-      MESSAGE("Successfully generated ${SETUP_PY_FILEPATH} for the Python"
-	      " extension module. To install the Python extension module:"
-	      "\n\t0) Install the C++ library: make && make install"
-	      " (might need admin access)"
-	      "\n\t1) Go to ${CMAKE_CURRENT_SOURCE_DIR}"
-	      "\n\t2) Build the Python extension: python setup.py build"
-	      "\n\t3) Install the Python extension: python setup.py install"
-	      " (might need admin access)"
-        )
-      LIST(APPEND ${PROJECT_NAME}_SRCS
-        ndicapimodule.cxx
-        )
-      LIST(APPEND ${PROJECT_NAME}_INCLUDE_DIRS
-        ${PYTHON_INCLUDE_DIRS}
-        )
-      LIST(APPEND ${PROJECT_NAME}_LIBS
-        ${PYTHON_LIBRARIES}
-        )
-
-      CONFIGURE_FILE(
-        ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
-        ${SETUP_PY_FILEPATH}
-        )
-    ENDIF()
+  IF(NOT BUILD_SHARED_LIBS)
+    MESSAGE(FATAL_ERROR
+      "The Python extension only works with shared libraries"
+      " (DLLs on Windows). Please enable building as a"
+      " shared library (CMake option BUILD_SHARED_LIBS)."
+      )
   ENDIF()
+  SET(SETUP_PY_FILEPATH ${CMAKE_CURRENT_SOURCE_DIR}/setup.py)
+  CONFIGURE_FILE(
+    ${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in
+    ${SETUP_PY_FILEPATH}
+    )
+  MESSAGE(
+    "Successfully generated ${SETUP_PY_FILEPATH} for the Python"
+    " extension module. To install the Python extension module:"
+    "\n\t0) Install the C++ library: make && make install"
+    " (might need admin access)"
+    "\n\t1) Go to ${CMAKE_CURRENT_SOURCE_DIR}"
+    "\n\t2) Build and install the Python extension:"
+    " python setup.py install (might require admin access)"
+    )
 ENDIF()
 
 FIND_PACKAGE(Threads)

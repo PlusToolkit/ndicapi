@@ -1,4 +1,4 @@
-from pyndicapi import (
+from ndicapy import (
     ndiDeviceName, ndiProbe, NDI_OKAY,
     ndiOpen, ndiClose, ndiCommand, ndiGetError,
     ndiErrorString, NDI_115200,
