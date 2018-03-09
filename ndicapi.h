@@ -1965,21 +1965,25 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define NDI_FEATURES        0x25  /*!<\brief Failure to determine supported features*/
 
 #define NDI_ENVIRONMENT     0xf1  /*!<\brief Too much environmental infrared */
-
-#define NDI_EPROM_READ      0xf6  /*!<\brief Failure to read Flash EPROM */
-#define NDI_EPROM_WRITE     0xf5  /*!<\brief Failure to write Flash EPROM */
-#define NDI_EPROM_ERASE     0xf4  /*!<\brief Failure to erase Flash EPROM */
+#define NDI_EEPROM_ERASE    0xf4  /*!<\brief Failure to erase Flash EEPROM */
+#define NDI_EEPROM_WRITE    0xf5  /*!<\brief Failure to write Flash EEPROM */
+#define NDI_EEPROM_READ     0xf6  /*!<\brief Failure to read Flash EEPROM */
 
 /* error codes returned by the C api */
 
 #define NDI_BAD_CRC         0x0100  /*!<\brief Bad CRC received from device */
-#define NDI_OPEN_ERROR      0x0200  /*!<\brief Error opening serial device */
-#define NDI_BAD_COMM        0x0300  /*!<\brief Bad communication parameters for host*/
-#define NDI_TIMEOUT         0x0400  /*!<\brief Device took >5 secs to reply */
-#define NDI_WRITE_ERROR     0x0500  /*!<\brief Device write error */
-#define NDI_READ_ERROR      0x0600  /*!<\brief Device read error */
-#define NDI_RESET_FAIL      0x0700  /*!<\brief Device failed to reset on break */
-#define NDI_PROBE_FAIL      0x0800  /*!<\brief Device not found on specified port */
+#define NDI_OPEN_ERROR      0x0101  /*!<\brief Error opening serial device */
+#define NDI_BAD_COMM        0x0102  /*!<\brief Bad communication parameters for host*/
+#define NDI_TIMEOUT         0x0103  /*!<\brief Device took >5 secs to reply */
+#define NDI_WRITE_ERROR     0x0104  /*!<\brief Device write error */
+#define NDI_READ_ERROR      0x0105  /*!<\brief Device read error */
+#define NDI_RESET_FAIL      0x0106  /*!<\brief Device failed to reset on break */
+#define NDI_PROBE_FAIL      0x0107  /*!<\brief Device not found on specified port */
+
+#define NDI_DSR_FAILURE           0x0200  /*!<\brief Bad DSR query failure */
+#define NDI_BAD_REPLY             0x0201  /*!<\brief Bad reply from measurement system */
+#define NDI_NO_FEATURES_FIRMWARE  0x0202  /*!<\brief System doesn't support Features.Firmware */
+#define NDI_COMMAND_VER_FAILED    0x0203  /*!<\brief VER command failed */
 /*\}*/
 
 
@@ -2062,21 +2066,21 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 /*\}*/
 
 /* return values for handle status */
-#define NDI_HANDLE_VALID 0x01
-#define NDI_HANDLE_MISSING 0x02
-#define NDI_HANDLE_DISABLED 0x04
+#define NDI_HANDLE_VALID          0x01
+#define NDI_HANDLE_MISSING        0x02
+#define NDI_HANDLE_DISABLED       0x04
 
 /* ndiGetTXPortStatus() and ndiGetPSTATPortStatus() return value bits */
 /*\{*/
-#define  NDI_TOOL_IN_PORT        0x01
-#define  NDI_SWITCH_1_ON         0x02
-#define  NDI_SWITCH_2_ON         0x04
-#define  NDI_SWITCH_3_ON         0x08
-#define  NDI_INITIALIZED         0x10
-#define  NDI_ENABLED             0x20
-#define  NDI_OUT_OF_VOLUME       0x40 /* only for ndiGetGXPortStatus() */
-#define  NDI_PARTIALLY_IN_VOLUME 0x80 /* only for ndiGetGXPortStatus() */
-#define  NDI_CURRENT_DETECT      0x80 /* only for ndiGetPSTATPortStatus() */
+#define  NDI_TOOL_IN_PORT         0x01
+#define  NDI_SWITCH_1_ON          0x02
+#define  NDI_SWITCH_2_ON          0x04
+#define  NDI_SWITCH_3_ON          0x08
+#define  NDI_INITIALIZED          0x10
+#define  NDI_ENABLED              0x20
+#define  NDI_OUT_OF_VOLUME        0x40 /* only for ndiGetGXPortStatus() */
+#define  NDI_PARTIALLY_IN_VOLUME  0x80 /* only for ndiGetGXPortStatus() */
+#define  NDI_CURRENT_DETECT       0x80 /* only for ndiGetPSTATPortStatus() */
 /*\}*/
 
 /* ndiGetTXSystemStatus() return value bits */

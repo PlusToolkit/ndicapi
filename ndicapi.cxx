@@ -551,9 +551,9 @@ ndicapiExport char* ndiErrorString(int errnum)
     "Too much environmental infrared",
     "Unrecognized error code",
     "Unrecognized error code",
-    "Unable to read Flash EPROM",
-    "Unable to write Flash EPROM",
     "Unable to erase Flash EPROM"
+    "Unable to write Flash EPROM",
+    "Unable to read Flash EPROM",
   };
 
   static char* textarray_api[] = // values specific to the API
@@ -568,17 +568,29 @@ ndicapiExport char* ndiErrorString(int errnum)
     "Measurement System not found on specified port"
   };
 
+  static char* textarray_serial[] = // values specific to serial errors
+  {
+    "Serial DSR query failure",
+    "Bad reply from measurement system",
+    "System does not support Features.Firmware",
+    "Command VER failed"
+  };
+
   if (errnum >= 0x00 && errnum <= 0x31)
   {
     return textarray_low[errnum];
   }
-  else if (errnum <= 0xf6 && errnum >= 0xf1)
+  else if (errnum >= 0xf1 && errnum <= 0xf6)
   {
     return textarray_high[errnum - 0xf1];
   }
-  else if (errnum >= 0x100 && errnum <= 0x700)
+  else if (errnum >= 0x0100 && errnum <= 0x0107)
   {
-    return textarray_api[(errnum >> 8) - 1];
+    return textarray_api[errnum - 0x0100];
+  }
+  else if (errnum >= 0x0200 && errnum <= 0x0203)
+  {
+    return textarray_serial[errnum - 0x200];
   }
 
   return "Unrecognized error code";
@@ -723,7 +735,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
   if (!ndiSerialCheckDSR(serial_port))
   {
     ndiSerialClose(serial_port);
-    return NDI_PROBE_FAIL;
+    return NDI_DSR_FAILURE;
   }
 
   // set comm parameters to default, but decrease timeout to 0.1s
@@ -757,7 +769,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
     if (n < 0)
     {
       ndiSerialClose(serial_port);
-      return NDI_READ_ERROR;
+      return errorCode;
     }
     else if (n == 0)
     {
@@ -769,7 +781,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
     if (strncmp(init_reply, "RESETBE6F\r", 10) != 0)
     {
       ndiSerialClose(serial_port);
-      return NDI_PROBE_FAIL;
+      return NDI_BAD_REPLY;
     }
     // try to initialize a second time
     ndiSerialSleep(serial_port, 100);
@@ -809,7 +821,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
   if (ndiSerialWrite(serial_port, "GETINFO:Features.Firmware.Version0492\r", strlen("GETINFO:Features.Firmware.Version0492\r")) != strlen("GETINFO:Features.Firmware.Version0492\r"))
   {
     ndiSerialClose(serial_port);
-    return NDI_PROBE_FAIL;
+    return NDI_NO_FEATURES_FIRMWARE;
   }
 
   n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode);
@@ -831,13 +843,13 @@ ndicapiExport int ndiSerialProbe(const char* device)
           (n = ndiSerialRead(serial_port, reply, 1023, false, &errorCode)) < 7)
       {
         ndiSerialClose(serial_port);
-        return NDI_PROBE_FAIL;
+        return NDI_COMMAND_VER_FAILED;
       }
     }
     else if (strncmp(reply, "Features", strlen("Features")) != 0)
     {
       ndiSerialClose(serial_port);
-      return NDI_PROBE_FAIL;
+      return NDI_BAD_REPLY;
     }
   }
 
