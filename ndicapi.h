@@ -221,7 +221,8 @@ ndicapiExport char* ndiSerialDeviceName(int i);
   -# if the "INIT:" succeeds, send "VER:0" and check for response.
   -# restore the device to its previous state and close the device.
 
-  \param device  name of a valid serial port device
+  \param device    name of a valid serial port device
+  \param checkDSR  whether or not to perform a DSR check
 
   \return one of:
   - NDI_OKAY         -  probe was successful
@@ -232,7 +233,7 @@ ndicapiExport char* ndiSerialDeviceName(int i);
   - NDI_TIMEOUT      -  timeout while waiting for data
   - NDI_PROBE_FAIL   -  the device found was not an NDI device
 */
-ndicapiExport int ndiSerialProbe(const char* device);
+ndicapiExport int ndiSerialProbe(const char* device, bool checkDSR);
 
 /*! \ingroup NDIMethods
   Open communication with the NDI device on the specified

@@ -718,7 +718,7 @@ ndicapiExport char* ndiSerialDeviceName(int i)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport int ndiSerialProbe(const char* device)
+ndicapiExport int ndiSerialProbe(const char* device, bool checkDSR)
 {
   char reply[1024];
   char init_reply[16];
@@ -732,7 +732,7 @@ ndicapiExport int ndiSerialProbe(const char* device)
   }
 
   // check DSR line to see whether any device is connected
-  if (!ndiSerialCheckDSR(serial_port))
+  if (checkDSR && !ndiSerialCheckDSR(serial_port))
   {
     ndiSerialClose(serial_port);
     return NDI_DSR_FAILURE;
