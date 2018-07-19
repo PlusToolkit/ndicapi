@@ -42,6 +42,8 @@ POSSIBILITY OF SUCH DAMAGES.
 
 #include <string.h>
 #include <stdlib.h>
+#include <iostream>
+
 #include <stdio.h>
 #include <math.h>
 
@@ -68,7 +70,7 @@ namespace
     // call the user-supplied callback function
     if (pol->ErrorCallback)
     {
-      pol->ErrorCallback(errnum, ndiErrorString(errnum), pol->ErrorCallbackData);
+      pol->ErrorCallback(errnum, (char*)ndiErrorString(errnum), pol->ErrorCallbackData);
     }
 
     return errnum;
@@ -491,9 +493,9 @@ ndicapiExport int ndiGetSocketError(ndicapi* pol)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport char* ndiErrorString(int errnum)
+ndicapiExport const char* ndiErrorString(int errnum)
 {
-  static char* textarray_low[] = // values from 0x01 to 0x21
+  static const char* textarray_low[] = // values from 0x01 to 0x21
   {
     "No error",
     "Invalid command",
@@ -546,7 +548,7 @@ ndicapiExport char* ndiErrorString(int errnum)
     "Invalid input or output state",
   };
 
-  static char* textarray_high[] = // values from 0xf6 to 0xf4
+  static const char* textarray_high[] = // values from 0xf6 to 0xf4
   {
     "Too much environmental infrared",
     "Unrecognized error code",
@@ -556,7 +558,7 @@ ndicapiExport char* ndiErrorString(int errnum)
     "Unable to read Flash EPROM",
   };
 
-  static char* textarray_api[] = // values specific to the API
+  static const char* textarray_api[] = // values specific to the API
   {
     "Bad CRC on reply from Measurement System",
     "Error opening serial connection",
@@ -568,7 +570,7 @@ ndicapiExport char* ndiErrorString(int errnum)
     "Measurement System not found on specified port"
   };
 
-  static char* textarray_serial[] = // values specific to serial errors
+  static const char* textarray_serial[] = // values specific to serial errors
   {
     "Serial DSR query failure",
     "Bad reply from measurement system",
@@ -597,7 +599,7 @@ ndicapiExport char* ndiErrorString(int errnum)
 }
 
 //----------------------------------------------------------------------------
-ndicapiExport char* ndiSerialDeviceName(int i)
+ndicapiExport const char* ndiSerialDeviceName(int i)
 {
 #if defined(_WIN32)
 
@@ -649,7 +651,7 @@ ndicapiExport char* ndiSerialDeviceName(int i)
       {
         strncpy(devicenames[j], "/dev/", 5);
         strncpy(devicenames[j] + 5, ep->d_name, 255);
-        devicenames[j][255 + 5] == '\0';
+        devicenames[j][255 + 5] = '\0';
         closedir(dirp);
         return devicenames[j];
       }
@@ -744,7 +746,6 @@ ndicapiExport int ndiSerialProbe(const char* device, bool checkDSR)
     ndiSerialClose(serial_port);
     return NDI_BAD_COMM;
   }
-
   // flush the buffers (which are unlikely to contain anything)
   ndiSerialFlush(serial_port, NDI_IOFLUSH);
 
@@ -2184,7 +2185,7 @@ namespace
     int newspeed = 9600;
     int newhand = 0;
 
-    if (command[5] >= '0' && command[5] <= '7' || command[5] == 'A')
+    if ((command[5] >= '0' && command[5] <= '7') || command[5] == 'A')
     {
       if (command[5] != 'A')
       {
@@ -2353,17 +2354,17 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   command[i++] = '\r';                              // tack on carriage return
   command[i] = '\0';                                // terminate for good luck
 
-  bool isBinary = (strncmp(command, "BX", commandLength) == 0 && commandLength == strlen("BX") ||
-                   strncmp(command, "GETLOG", commandLength) == 0 && commandLength == strlen("GETLOG") ||
-                   strncmp(command, "VGET", commandLength) == 0 && commandLength == strlen("VGET"));
+  bool isBinary = (strncmp(command, "BX", commandLength) == 0 && commandLength == strlen("BX")) ||
+                   (strncmp(command, "GETLOG", commandLength) == 0 && commandLength == strlen("GETLOG")) ||
+                   (strncmp(command, "VGET", commandLength) == 0 && commandLength == strlen("VGET"));
 
 
   // if the command is GX, TX, or BX and thread_mode is on, we copy the reply from
   //  the thread rather than getting it directly from the Measurement System
   if (api->IsThreadedMode && api->IsTracking &&
-      commandLength == 2 && (command[0] == 'G' && command[1] == 'X' ||
-                             command[0] == 'T' && command[1] == 'X' ||
-                             command[0] == 'B' && command[1] == 'X'))
+      commandLength == 2 && ((command[0] == 'G' && command[1] == 'X') ||
+                             (command[0] == 'T' && command[1] == 'X') ||
+                             (command[0] == 'B' && command[1] == 'X')))
   {
     // check that the thread is sending the GX/BX/TX command that we want
     if (strcmp(command, api->ThreadCommand) != 0)
@@ -2559,7 +2560,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   // check for error code
   if (commandReply[0] == 'E' && strncmp(commandReply, "ERROR", 5) == 0)
   {
-    ndiSetError(api, ndiHexToUnsignedLong(&commandReply[5], 2));
+    ndiSetError(api, (int)ndiHexToUnsignedLong(&commandReply[5], 2));
     return commandReply;
   }
 
@@ -3825,7 +3826,7 @@ static void* ndiThreadFunc(void* userdata)
     }
 
     // send the command to the Measurement System
-    i = strlen(command);
+    i = (int)strlen(command);
     if (errorCode == 0)
     {
       if (pol->SerialDevice != NDI_INVALID_HANDLE)
