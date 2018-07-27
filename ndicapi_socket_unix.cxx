@@ -132,8 +132,8 @@ ndicapiExport int ndiSocketRead(NDISocketHandle socket, char* reply, int numberO
     }
 
     totalNumberOfBytesRead += numberOfBytesRead;
-    if (!isBinary && reply[totalNumberOfBytesRead - 1] == '\r'       /* done when carriage return received (ASCII) or when ERROR... received (binary)*/
-        || isBinary && strncmp(reply, "ERROR", 5) == 0 && reply[totalNumberOfBytesRead - 1] == '\r')
+    if ((!isBinary && reply[totalNumberOfBytesRead - 1] == '\r')       /* done when carriage return received (ASCII) or when ERROR... received (binary)*/
+        || (isBinary && strncmp(reply, "ERROR", 5) == 0 && reply[totalNumberOfBytesRead - 1] == '\r'))
     {
       break;
     }

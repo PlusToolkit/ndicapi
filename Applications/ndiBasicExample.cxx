@@ -11,7 +11,7 @@
 
 #if _MSC_VER >= 1700
 //----------------------------------------------------------------------------
-bool ParallelProbe(ndicapi*& outDevice)
+bool ParallelProbe(ndicapi*& outDevice, bool checkDSR)
 {
   const int MAX_SERIAL_PORT_NUMBER = 20; // the serial port is almost surely less than this number
   std::vector<bool> deviceExists(MAX_SERIAL_PORT_NUMBER);
@@ -27,7 +27,7 @@ bool ParallelProbe(ndicapi*& outDevice)
         std::lock_guard<std::mutex> guard(deviceNameMutex);
         devName = std::string(ndiSerialDeviceName(i));
       }
-      int errnum = ndiSerialProbe(devName.c_str());
+      int errnum = ndiSerialProbe(devName.c_str(),checkDSR);
       if (errnum == NDI_OKAY)
       {
         deviceExists[i] = true;
@@ -56,30 +56,38 @@ bool ParallelProbe(ndicapi*& outDevice)
 
 struct ndicapi;
 
-int main()
+int main(int argc, char * argv[])
 {
+  bool checkDSR = false;
   ndicapi* device(nullptr);
-  char* name(nullptr);
+  const char* name(nullptr);
 
-#if _MSC_VER >= 1700
-  ParallelProbe(device);
-#else
-  const int MAX_SERIAL_PORTS = 20;
-  for (int i = 0; i < MAX_SERIAL_PORTS; ++i)
+  if(argc > 1)
+    name = argv[1];
+  else
   {
-    name = ndiSerialDeviceName(i);
-    int result = ndiSerialProbe(name);
-    if (result == NDI_OKAY)
+#if _MSC_VER >= 1700
+    ParallelProbe(device,argc > 1 ? argv[1]: 0, checkDSR);
+#else
     {
-      break;
+      const int MAX_SERIAL_PORTS = 20;
+      for (int i = 0; i < MAX_SERIAL_PORTS; ++i)
+      {
+        name = ndiSerialDeviceName(i);
+        int result = ndiSerialProbe(name,checkDSR);
+        if (result == NDI_OKAY)
+        {
+          break;
+        }
+      }
     }
+#endif
   }
 
   if (name != nullptr)
   {
     device = ndiOpenSerial(name);
   }
-#endif
 
   if (device != nullptr)
   {

@@ -25,6 +25,7 @@
   #define PyString_Format PyUnicode_Format
   #define PyString_AsString PyUnicode_AsUTF8
   #define PyIntObject PyLongObject
+  //#define PY_INT_OBJECT_OB_IVAL(ob) PyLong_AsLong((PyObject*)(ob))
   #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
   #define cmpfunc PyAsyncMethods*
 #else
@@ -150,7 +151,7 @@ bitfield_dealloc(PyIntObject* v)
 static int
 bitfield_print(PyIntObject* v, FILE* fp, int flags/* Not used but required by interface */)
 {
-  fprintf(fp, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
+  fprintf(fp, "0x%lX", (unsigned long)PY_INT_OBJECT_OB_IVAL(v));
   return 0;
 }
 
@@ -158,7 +159,7 @@ static PyObject*
 bitfield_repr(PyIntObject* v)
 {
   char buf[20];
-  sprintf(buf, "0x%lX", PY_INT_OBJECT_OB_IVAL(v));
+  sprintf(buf, "0x%lX", (unsigned long)PY_INT_OBJECT_OB_IVAL(v));
   return PyString_FromString(buf);
 }
 
@@ -185,7 +186,7 @@ bitfield_invert(PyIntObject* v)
 static PyObject*
 bitfield_lshift(PyIntObject* v, PyIntObject* w)
 {
-  register unsigned long a, b;
+  register long a, b;
   a = PY_INT_OBJECT_OB_IVAL(v);
   b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
@@ -198,7 +199,7 @@ bitfield_lshift(PyIntObject* v, PyIntObject* w)
     Py_INCREF(v);
     return (PyObject*) v;
   }
-  if (b >= 8 * sizeof(long))
+  if (b >= 8 * (long)sizeof(long))
   {
     return PyNDIBitfield_FromUnsignedLong(0L);
   }
@@ -209,7 +210,7 @@ bitfield_lshift(PyIntObject* v, PyIntObject* w)
 static PyObject*
 bitfield_rshift(PyIntObject* v, PyIntObject* w)
 {
-  register unsigned long a, b;
+  register long a, b;
   a = PY_INT_OBJECT_OB_IVAL(v);
   b = PY_INT_OBJECT_OB_IVAL(w);
   if (b < 0)
@@ -222,7 +223,7 @@ bitfield_rshift(PyIntObject* v, PyIntObject* w)
     Py_INCREF(v);
     return (PyObject*) v;
   }
-  if (b >= 8 * sizeof(long))
+  if (b >= 8 * (long)sizeof(long))
   {
     if (a < 0)
     { a = -1; }
@@ -546,7 +547,7 @@ static PyObject* Py_ndiGetError(PyObject* module, PyObject* args)
 static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
 {
   int errnum;
-  char* result;
+  const char* result;
 
   if (PyArg_ParseTuple(args, "i:plErrorString", &errnum))
   {
@@ -560,7 +561,7 @@ static PyObject* Py_ndiErrorString(PyObject* module, PyObject* args)
 static PyObject* Py_ndiDeviceName(PyObject* module, PyObject* args)
 {
   int n;
-  char* result;
+  const char* result;
 
   if (PyArg_ParseTuple(args, "i:plDeviceName", &n))
   {
@@ -586,7 +587,7 @@ static PyObject* Py_ndiProbe(PyObject* module, PyObject* args)
 
   if (PyArg_ParseTuple(args, "s:plProbe", &device))
   {
-    result = ndiSerialProbe(device);
+    result = ndiSerialProbe(device, false);
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
@@ -732,7 +733,7 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   return _ndiErrorHelper(ndiGetError(pol), obj);
 }
 
-static PyObject* Py_ndiCommand2(PyObject* module, char* format, PyObject* args)
+static PyObject* Py_ndiCommand2(PyObject* module, const char* format, PyObject* args)
 {
   int i, n;
   PyObject* newargs;
@@ -792,6 +793,7 @@ PyCommandMacro(ndiPDIS, "PDIS:%c")
 PyCommandMacro(ndiTSTART, "TSTART:")
 PyCommandMacro(ndiTSTOP, "TSTOP:")
 PyCommandMacro(ndiGX, "GX:%04X")
+PyCommandMacro(ndiBX, "BX:%04X")
 PyCommandMacro(ndiLED, "LED:%c%d%c")
 PyCommandMacro(ndiBEEP, "BEEP:%i")
 PyCommandMacro(ndiVER, "VER:%d")
@@ -864,6 +866,35 @@ static PyObject* Py_ndiGetGXTransform(PyObject* module, PyObject* args)
   return NULL;
 }
 
+static PyObject* Py_ndiGetBXTransform(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  float transform[8];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetBXTransform",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetBXTransform(pol, port, transform);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(dddddddd)", transform[0], transform[1],
+                         transform[2], transform[3], transform[4],
+                         transform[5], transform[6], transform[7]);
+  }
+
+  return NULL;
+}
+
 static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
 {
   char port;
@@ -871,6 +902,23 @@ static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
   ndicapi* pol;
 
   if (PyArg_ParseTuple(args, "O&c:plGetGXPortStatus",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetGXPortStatus(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+
+static PyObject* Py_ndiGetBXPortStatus(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetBXPortStatus",
                        &_ndiConverter, &pol, &port))
   {
     result = ndiGetGXPortStatus(pol, port);
@@ -894,6 +942,23 @@ static PyObject* Py_ndiGetGXSystemStatus(PyObject* module, PyObject* args)
 
   return NULL;
 }
+
+
+static PyObject* Py_ndiGetBXSystemStatus(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetBXSystemStatus",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetBXSystemStatus(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
 
 static PyObject* Py_ndiGetGXToolInfo(PyObject* module, PyObject* args)
 {
@@ -965,6 +1030,22 @@ static PyObject* Py_ndiGetGXFrame(PyObject* module, PyObject* args)
                        &_ndiConverter, &pol, &port))
   {
     result = ndiGetGXFrame(pol, port);
+    return PyLong_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetBXFrame(PyObject* module, PyObject* args)
+{
+  char port;
+  unsigned long result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetBXFrame",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetBXFrame(pol, port);
     return PyLong_FromUnsignedLong(result);
   }
 
@@ -1398,6 +1479,18 @@ static PyMethodDef NdicapiMethods[] =
   Py_NDIMethodMacro(ndiGetGXNumberOfPassiveStrays),
   Py_NDIMethodMacro(ndiGetGXPassiveStray),
 
+  Py_NDIMethodMacro(ndiBX),
+
+  Py_NDIMethodMacro(ndiGetBXTransform),
+  Py_NDIMethodMacro(ndiGetBXPortStatus),
+  Py_NDIMethodMacro(ndiGetBXSystemStatus),
+  //Py_NDIMethodMacro(ndiGetBXToolInfo),
+  //Py_NDIMethodMacro(ndiGetBXMarkerInfo),
+  //Py_NDIMethodMacro(ndiGetBXSingleStray),
+  Py_NDIMethodMacro(ndiGetBXFrame),
+  //Py_NDIMethodMacro(ndiGetBXNumberOfPassiveStrays),
+  //Py_NDIMethodMacro(ndiGetBXPassiveStray),
+
   Py_NDIMethodMacro(ndiLED),
   Py_NDIMethodMacro(ndiBEEP),
   Py_NDIMethodMacro(ndiVER),
@@ -1527,9 +1620,9 @@ ndicapiExport MOD_INIT(ndicapy)
 
   Py_NDIErrcodeMacro(NDI_ENVIRONMENT);
 
-  Py_NDIErrcodeMacro(NDI_EPROM_READ);
-  Py_NDIErrcodeMacro(NDI_EPROM_WRITE);
-  Py_NDIErrcodeMacro(NDI_EPROM_ERASE);
+  //Py_NDIErrcodeMacro(NDI_EPROM_READ);
+  //Py_NDIErrcodeMacro(NDI_EPROM_WRITE);
+  //Py_NDIErrcodeMacro(NDI_EPROM_ERASE);
 
   Py_NDIErrcodeMacro(NDI_BAD_CRC);
   Py_NDIErrcodeMacro(NDI_OPEN_ERROR);

@@ -209,7 +209,7 @@ extern "C" {
 
   If \em i is too large, the return value is zero.
 */
-ndicapiExport char* ndiSerialDeviceName(int i);
+ndicapiExport const char* ndiSerialDeviceName(int i);
 
 /*! \ingroup NDIMethods
   Probe for an NDI device on the specified serial port device.
@@ -1859,7 +1859,7 @@ ndicapiExport int ndiGetIRCHKSourceXY(ndicapi* pol, int side, int i, double xy[2
 
   An unrecognized error code will return "Unrecognized error code".
 */
-ndicapiExport char* ndiErrorString(int errnum);
+ndicapiExport const char* ndiErrorString(int errnum);
 
 /*! \ingroup ConversionFunctions
   Convert \em n characters of a hexidecimal string into an unsigned long.
