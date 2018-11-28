@@ -617,6 +617,31 @@ static PyObject* Py_ndiOpen(PyObject* module, PyObject* args)
   return NULL;
 }
 
+/* Open a networked tracker*/
+static PyObject* Py_ndiOpenNetwork(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+  char* hostname;
+  int port;
+  PyNdicapi* self;
+
+  if (PyArg_ParseTuple(args, "si:plOpenNetwork", &hostname, &port))
+  {
+    pol = ndiOpenNetwork(hostname, port);
+    if (pol == NULL)
+    {
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+    self = PyObject_NEW(PyNdicapi, &PyNdicapiType);
+    self->pl_ndicapi = pol;
+    Py_INCREF(self);
+    return (PyObject*)self;
+  }
+
+  return NULL;
+}
+
 static PyObject* Py_ndiGetDeviceName(PyObject* module, PyObject* args)
 {
   ndicapi* pol;
@@ -643,6 +668,21 @@ static PyObject* Py_ndiClose(PyObject* module, PyObject* args)
   if (PyArg_ParseTuple(args, "O&:plClose", &_ndiConverter, &pol))
   {
     ndiSerialClose(pol->SerialDevice);
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  return NULL;
+}
+
+/* close a networked tracker */
+static PyObject* Py_ndiCloseNetwork(PyObject* module, PyObject* args)
+{
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plClose", &_ndiConverter, &pol))
+  {
+    ndiCloseNetwork(pol);
     Py_INCREF(Py_None);
     return Py_None;
   }
@@ -822,12 +862,12 @@ PyCommandMacro(ndi3D, "3D:%c%d")
 
 static PyObject* Py_ndiPVWRFromFile(PyObject* module, PyObject* args)
 {
-  char port;
+  int port;
   int result;
   char* filename;
   ndicapi* pol;
 
-  if (PyArg_ParseTuple(args, "O&cs:plPVWRFromFile",
+  if (PyArg_ParseTuple(args, "O&is:plPVWRFromFile",
                        &_ndiConverter, &pol, &port, &filename))
   {
     result = ndiPVWRFromFile(pol, port, filename);
@@ -1297,6 +1337,34 @@ static PyObject* Py_ndiGetIRCHKSourceXY(PyObject* module, PyObject* args)
   return NULL;
 }
 
+static PyObject* Py_ndiGetPHSRNumberOfHandles (PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetPHSRNumberOfHandles",
+                       &_ndiConverter, &pol))
+  {
+    result =  ndiGetPHSRNumberOfHandles(pol);
+    return PyInt_FromLong(result);
+  }
+  return NULL;
+}
+
+static PyObject* Py_ndiGetPHRQHandle (PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetPHRQHandle",
+                       &_ndiConverter, &pol))
+  {
+    result =  ndiGetPHRQHandle(pol);
+    return PyInt_FromLong(result);
+  }
+  return NULL;
+}
+
 static PyObject* Py_ndiRelativeTransform(PyObject* module, PyObject* args)
 {
   double a[8];
@@ -1446,8 +1514,10 @@ static PyMethodDef NdicapiMethods[] =
   Py_NDIMethodMacro(ndiDeviceName),
   Py_NDIMethodMacro(ndiProbe),
   Py_NDIMethodMacro(ndiOpen),
+  Py_NDIMethodMacro(ndiOpenNetwork),
   Py_NDIMethodMacro(ndiGetDeviceName),
   Py_NDIMethodMacro(ndiClose),
+  Py_NDIMethodMacro(ndiCloseNetwork),
   Py_NDIMethodMacro(ndiSetThreadMode),
   Py_NDIMethodMacro(ndiCommand),
 
@@ -1529,6 +1599,9 @@ static PyMethodDef NdicapiMethods[] =
   Py_NDIMethodMacro(ndiGetIRCHKDetected),
   Py_NDIMethodMacro(ndiGetIRCHKNumberOfSources),
   Py_NDIMethodMacro(ndiGetIRCHKSourceXY),
+
+  Py_NDIMethodMacro(ndiGetPHSRNumberOfHandles),
+  Py_NDIMethodMacro(ndiGetPHRQHandle),
 
   Py_NDIMethodMacro(ndiIRED),
   Py_NDIMethodMacro(ndi3D),
