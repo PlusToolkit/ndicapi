@@ -834,6 +834,7 @@ PyCommandMacro(ndiTSTART, "TSTART:")
 PyCommandMacro(ndiTSTOP, "TSTOP:")
 PyCommandMacro(ndiGX, "GX:%04X")
 PyCommandMacro(ndiBX, "BX:%04X")
+PyCommandMacro(ndiTX, "TX:%04X")
 PyCommandMacro(ndiLED, "LED:%c%d%c")
 PyCommandMacro(ndiBEEP, "BEEP:%i")
 PyCommandMacro(ndiVER, "VER:%d")
@@ -935,6 +936,35 @@ static PyObject* Py_ndiGetBXTransform(PyObject* module, PyObject* args)
   return NULL;
 }
 
+static PyObject* Py_ndiGetTXTransform(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  double transform[8];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetTXTransform",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetTXTransform(pol, port, transform);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(dddddddd)", transform[0], transform[1],
+                         transform[2], transform[3], transform[4],
+                         transform[5], transform[6], transform[7]);
+  }
+
+  return NULL;
+}
+
 static PyObject* Py_ndiGetGXPortStatus(PyObject* module, PyObject* args)
 {
   char port;
@@ -961,12 +991,29 @@ static PyObject* Py_ndiGetBXPortStatus(PyObject* module, PyObject* args)
   if (PyArg_ParseTuple(args, "O&c:plGetBXPortStatus",
                        &_ndiConverter, &pol, &port))
   {
-    result = ndiGetGXPortStatus(pol, port);
+    result = ndiGetBXPortStatus(pol, port);
     return PyNDIBitfield_FromUnsignedLong(result);
   }
 
   return NULL;
 }
+
+static PyObject* Py_ndiGetTXPortStatus(PyObject* module, PyObject* args)
+{
+  char port;
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetTXPortStatus",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetTXPortStatus(pol, port);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
 
 static PyObject* Py_ndiGetGXSystemStatus(PyObject* module, PyObject* args)
 {
@@ -998,6 +1045,22 @@ static PyObject* Py_ndiGetBXSystemStatus(PyObject* module, PyObject* args)
 
   return NULL;
 }
+
+static PyObject* Py_ndiGetTXSystemStatus(PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetTXSystemStatus",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetTXSystemStatus(pol);
+    return PyNDIBitfield_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
 
 
 static PyObject* Py_ndiGetGXToolInfo(PyObject* module, PyObject* args)
@@ -1091,6 +1154,23 @@ static PyObject* Py_ndiGetBXFrame(PyObject* module, PyObject* args)
 
   return NULL;
 }
+
+static PyObject* Py_ndiGetTXFrame(PyObject* module, PyObject* args)
+{
+  char port;
+  unsigned long result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&c:plGetTXFrame",
+                       &_ndiConverter, &pol, &port))
+  {
+    result = ndiGetTXFrame(pol, port);
+    return PyLong_FromUnsignedLong(result);
+  }
+
+  return NULL;
+}
+
 
 static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
     PyObject* args)
@@ -1337,6 +1417,20 @@ static PyObject* Py_ndiGetIRCHKSourceXY(PyObject* module, PyObject* args)
   return NULL;
 }
 
+static PyObject* Py_ndiGetPHRQHandle (PyObject* module, PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetPHRQHandle",
+                       &_ndiConverter, &pol))
+  {
+    result =  ndiGetPHRQHandle(pol);
+    return PyInt_FromLong(result);
+  }
+  return NULL;
+}
+
 static PyObject* Py_ndiGetPHSRNumberOfHandles (PyObject* module, PyObject* args)
 {
   int result;
@@ -1351,15 +1445,16 @@ static PyObject* Py_ndiGetPHSRNumberOfHandles (PyObject* module, PyObject* args)
   return NULL;
 }
 
-static PyObject* Py_ndiGetPHRQHandle (PyObject* module, PyObject* args)
+static PyObject* Py_ndiGetPHSRHandle (PyObject* module, PyObject* args)
 {
   int result;
   ndicapi* pol;
+  int i;
 
-  if (PyArg_ParseTuple(args, "O&:plGetPHRQHandle",
-                       &_ndiConverter, &pol))
+  if (PyArg_ParseTuple(args, "O&i:plGetPHSRHandle",
+                       &_ndiConverter, &pol, &i))
   {
-    result =  ndiGetPHRQHandle(pol);
+    result =  ndiGetPHSRHandle(pol,i);
     return PyInt_FromLong(result);
   }
   return NULL;
@@ -1561,6 +1656,19 @@ static PyMethodDef NdicapiMethods[] =
   //Py_NDIMethodMacro(ndiGetBXNumberOfPassiveStrays),
   //Py_NDIMethodMacro(ndiGetBXPassiveStray),
 
+  Py_NDIMethodMacro(ndiTX),
+
+  Py_NDIMethodMacro(ndiGetTXTransform),
+  Py_NDIMethodMacro(ndiGetTXPortStatus),
+  Py_NDIMethodMacro(ndiGetTXSystemStatus),
+  //Py_NDIMethodMacro(ndiGetTXToolInfo),
+  //Py_NDIMethodMacro(ndiGetTXMarkerInfo),
+  //Py_NDIMethodMacro(ndiGetTXSingleStray),
+  Py_NDIMethodMacro(ndiGetTXFrame),
+  //Py_NDIMethodMacro(ndiGetTXNumberOfPassiveStrays),
+  //Py_NDIMethodMacro(ndiGetTXPassiveStray),
+
+
   Py_NDIMethodMacro(ndiLED),
   Py_NDIMethodMacro(ndiBEEP),
   Py_NDIMethodMacro(ndiVER),
@@ -1600,8 +1708,9 @@ static PyMethodDef NdicapiMethods[] =
   Py_NDIMethodMacro(ndiGetIRCHKNumberOfSources),
   Py_NDIMethodMacro(ndiGetIRCHKSourceXY),
 
-  Py_NDIMethodMacro(ndiGetPHSRNumberOfHandles),
   Py_NDIMethodMacro(ndiGetPHRQHandle),
+  Py_NDIMethodMacro(ndiGetPHSRNumberOfHandles),
+  Py_NDIMethodMacro(ndiGetPHSRHandle),
 
   Py_NDIMethodMacro(ndiIRED),
   Py_NDIMethodMacro(ndi3D),
