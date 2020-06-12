@@ -45,7 +45,7 @@ SET(${PROJECT_NAME}_SRCS
   ndicapi_socket.cxx
   )
 
-IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
+#IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   SET(${PROJECT_NAME}_HDRS
     ndicapi_math.h
     ndicapi_thread.h
@@ -53,7 +53,7 @@ IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
     ndicapi.h
     ndicapi_socket.h
   )
-ENDIF()
+#ENDIF()
 
 OPTION(BUILD_PYTHON "Ensure the python module will build." OFF)
 IF(BUILD_PYTHON)
