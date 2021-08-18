@@ -13,6 +13,11 @@
 * Version: 1.6
   * Date: 2016/03/08
 
+## Changes introduced by this fork
+* Fix issues with cross-compiling via mingw on POSIX platforms, particularly Linux
+* Re-arrange source files
+
+
 # Overview
 
 This package provides a portable C library that provides a straightforward interface to AURORA, POLARIS, and VEGA systems manufactured by Northern Digital Inc. This library is provided by the Plus library, and is not supported by Northern Digital Inc.
