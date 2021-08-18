@@ -30,6 +30,26 @@ SET(_targets ndicapi)
 # Configure options
 OPTION(ndicapi_BUILD_APPLICATIONS "Build applications." OFF)
 
+
+# --------------------------------------------------------------------------
+# build documentation if enabled
+option(BUILD_DOC "Build documentation." OFF)
+if (BUILD_DOC)
+	find_package(Doxygen)
+	if (DOXYGEN_FOUND)
+		set(DOXYGEN_IN ${CMAKE_CURRENT_LIST_DIR}/docs/ndicapi.dox)
+		set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+		configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+		add_custom_target(
+			doc ALL
+			COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+   	     	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			VERBATIM
+		)
+	endif (DOXYGEN_FOUND)
+endif (BUILD_DOC)
+
+
 # --------------------------------------------------------------------------
 # Configure library
 SET(${PROJECT_NAME}_INCLUDE_DIRS

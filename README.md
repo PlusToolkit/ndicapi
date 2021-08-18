@@ -16,7 +16,7 @@
 ## Changes introduced by this fork
 * Fix issues with cross-compiling via mingw on POSIX platforms, particularly Linux
 * Re-arrange source files
-
+* Add option in CMake to generate Doxygen documentation easily
 
 # Overview
 
