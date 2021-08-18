@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
 
   if (device != nullptr)
   {
-    const char* reply = ndiCommand(device, "INIT:");
+    const char* reply = ndiINIT(device); // ndiCommand(device, "INIT:");
     if (strncmp(reply, "ERROR", strlen(reply)) == 0 || ndiGetError(device) != NDI_OKAY)
     {
       std::cerr << "Error when sending command: " << ndiErrorString(ndiGetError(device)) << std::endl;
