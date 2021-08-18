@@ -98,7 +98,7 @@ IF(NOT WIN32)
 ENDIF()
 target_include_directories(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_INCLUDE_DIRS})
 
-IF(MSVC)
+IF(WIN32)
   target_link_libraries(${PROJECT_NAME} PUBLIC wsock32 ws2_32)
 ENDIF()
 
