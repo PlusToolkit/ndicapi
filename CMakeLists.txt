@@ -34,24 +34,26 @@ OPTION(ndicapi_BUILD_APPLICATIONS "Build applications." OFF)
 # Configure library
 SET(${PROJECT_NAME}_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/source
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_BINARY_DIR}
   )
 
 SET(${PROJECT_NAME}_SRCS
-  ndicapi.cxx
-  ndicapi_math.cxx
-  ndicapi_serial.cxx
-  ndicapi_thread.cxx
-  ndicapi_socket.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/ndicapi.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/ndicapi_math.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/ndicapi_serial.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/ndicapi_thread.cxx
+  ${CMAKE_CURRENT_SOURCE_DIR}/source/ndicapi_socket.cxx
   )
 
 #IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
   SET(${PROJECT_NAME}_HDRS
-    ndicapi_math.h
-    ndicapi_thread.h
-    ndicapi_serial.h
-    ndicapi.h
-    ndicapi_socket.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ndicapi_math.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ndicapi_thread.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ndicapi_serial.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ndicapi.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/ndicapi_socket.h
   )
 #ENDIF()
 
