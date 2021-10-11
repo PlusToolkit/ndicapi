@@ -6,15 +6,15 @@ SET(ndicapi_VERSION 1.6.0)
 # --------------------------------------------------------------------------
 # Configure output paths for libraries and executables.
 IF(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-  SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+  SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 ENDIF()
 
 IF(NOT DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
-  SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+  SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib")
 ENDIF()
 
 IF(NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
-  SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/share")
+  SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/share")
 ENDIF()
 
 IF(NOT DEFINED BUILD_SHARED_LIBS)
@@ -45,15 +45,16 @@ SET(${PROJECT_NAME}_SRCS
   ndicapi_socket.cxx
   )
 
-#IF(MSVC OR ${CMAKE_GENERATOR} MATCHES "Xcode")
-  SET(${PROJECT_NAME}_HDRS
-    ndicapi_math.h
-    ndicapi_thread.h
-    ndicapi_serial.h
-    ndicapi.h
-    ndicapi_socket.h
+CONFIGURE_FILE(ndicapiExport.h.in "${CMAKE_CURRENT_BINARY_DIR}/ndicapiExport.h" @ONLY)
+
+SET(${PROJECT_NAME}_HDRS
+  ndicapi_math.h
+  ndicapi_thread.h
+  ndicapi_serial.h
+  ndicapi.h
+  ndicapi_socket.h
+  ${CMAKE_CURRENT_BINARY_DIR}/ndicapiExport.h
   )
-#ENDIF()
 
 OPTION(BUILD_PYTHON "Ensure the python module will build." OFF)
 IF(BUILD_PYTHON)
@@ -117,7 +118,7 @@ ENDIF()
 
 #-----------------------------------------------------------------------------
 # CMake target details
-SET(${PROJECT_NAME}_TARGETS_FILE "${CMAKE_BINARY_DIR}/ndicapiTargets.cmake")
+SET(${PROJECT_NAME}_TARGETS_FILE "${CMAKE_CURRENT_BINARY_DIR}/ndicapiTargets.cmake")
 SET(${PROJECT_NAME}_LIBRARIES ndicapi)
 IF(BUILD_SHARED_LIBS)
   SET(CLEAR ${PROJECT_NAME}_STATIC)
@@ -137,16 +138,14 @@ export(TARGETS ${_targets}
   )
 
 CONFIGURE_FILE(ndicapiConfig.cmake.in
-  "${CMAKE_BINARY_DIR}/ndicapiConfig.cmake" @ONLY)
+  "${CMAKE_CURRENT_BINARY_DIR}/ndicapiConfig.cmake" @ONLY)
 
 CONFIGURE_FILE(ndicapiConfigVersion.cmake.in
-  "${CMAKE_BINARY_DIR}/ndicapiConfigVersion.cmake" @ONLY)
+  "${CMAKE_CURRENT_BINARY_DIR}/ndicapiConfigVersion.cmake" @ONLY)
 
-CONFIGURE_FILE(ndicapiExport.h.in
-  "${CMAKE_BINARY_DIR}/ndicapiExport.h" @ONLY)
 # Enable building of python module, configure the export file in the source directory as well
 CONFIGURE_FILE(ndicapiExport.h.in
-  "${CMAKE_SOURCE_DIR}/ndicapiExport.h" @ONLY)
+  "${CMAKE_CURRENT_SOURCE_DIR}/ndicapiExport.h" @ONLY)
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
