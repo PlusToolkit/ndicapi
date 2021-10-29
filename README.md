@@ -15,8 +15,9 @@
 
 ## Changes introduced by this fork
 * Fix issues with cross-compiling via mingw on POSIX platforms, particularly Linux
-* Re-arrange source files
+* Move source files to designated directories
 * Add option in CMake to generate Doxygen documentation easily
+* Fix format in Python macro functions
 
 # Overview
 
