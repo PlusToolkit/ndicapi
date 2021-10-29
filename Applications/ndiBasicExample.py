@@ -3,6 +3,7 @@ from ndicapy import (
     ndiOpen, ndiClose, ndiCommand, ndiGetError,
     ndiErrorString, NDI_115200,
     NDI_8N1, NDI_NOHANDSHAKE,
+    ndiCOMM, ndiINIT
 )
 
 
@@ -35,7 +36,7 @@ if __name__ == '__main__':
             '{}'.format(name)
         )
 
-    reply = ndiCommand(device, 'INIT:')
+    reply = ndiINIT(device)
     error = ndiGetError(device)
     if reply.startswith('ERROR') or error != NDI_OKAY:
         raise IOError(
@@ -43,10 +44,7 @@ if __name__ == '__main__':
             '{}'.format(ndiErrorString(error))
         )
 
-    reply = ndiCommand(
-        device,
-        'COMM:{:d}{:03d}{:d}'.format(NDI_115200, NDI_8N1, NDI_NOHANDSHAKE)
-    )
+    reply = ndiCOMM(device, NDI_115200, NDI_8N1, NDI_NOHANDSHAKE)
 
     # Add your own commands here!!!
 
