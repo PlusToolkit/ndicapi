@@ -75,7 +75,27 @@ ndicapiExport HANDLE ndiSerialOpen(const char* device)
   DCB comm_settings;
   int i;
 
-  serial_port = CreateFile(device, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  // Windows only has reserved filenames for COM1-COM9.
+  // When trying to open a port within this range we need to use "COMx" where x is 1-9
+  // When trying to open a port outside this range we need to use "\\.\COMx" where x > 9
+  
+  // Extracting the number by removing the first three letters from the device name
+  // i.e. ['C','O','M','2','1'] becomes ['2','1'] 
+  int size_of_device_name = sizeof(device) / sizeof(*device);
+  char *device_number_char_arr = new char[size_of_device_name-3];
+  memcpy(device_number_char_arr, device+3, size_of_device_name-3);
+  int device_number = atoi(device_number_char_arr);
+  delete(device_number_char_arr);
+
+  if(device_number > 9){
+    char *adjusted_device = new char[size_of_device_name+4];
+    memcpy(adjusted_device, "\\\\.\\", 4); //The way Windows handles backslashes, this ends up being "\\.\"
+    memcpy(adjusted_device+4, device, size_of_device_name); //Append device name to "\\.\" to form "\\.\COM21"
+    serial_port = CreateFile(adjusted_device, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    delete(adjusted_device);
+  }else{
+    serial_port = CreateFile(device, GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  }
 
   if (serial_port == INVALID_HANDLE_VALUE)
   {

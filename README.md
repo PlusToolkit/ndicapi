@@ -20,7 +20,7 @@ This package provides a portable C library that provides a straightforward inter
 The contents of this package have been built successfully under a wide range of compilers. It is a [CMake](https://cmake.org/download/) project and can be configured and built as such.
 
 ## Building
-To build, configure first using CMake, then build according to your chosen generator.
+To build, configure first using CMake, build according to your chosen generator. [Instructions on how to do this here.](https://preshing.com/20170511/how-to-build-a-cmake-based-project/) 
 
 ### Python
 To build the [Python][python] extension module of this library:
