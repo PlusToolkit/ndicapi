@@ -631,7 +631,7 @@ ndicapiExport const char* ndiSerialDeviceName(int i)
 #elif defined (__APPLE__)
 
   // Apple
-  static char devicenames[4][255 + 6];
+  static char devicename[255 + 6];
   DIR* dirp;
   struct dirent* ep;
   int j = 0;
@@ -642,18 +642,18 @@ ndicapiExport const char* ndiSerialDeviceName(int i)
     return NULL;
   }
 
-  while ((ep = readdir(dirp)) != NULL && j < 4)
+  while ((ep = readdir(dirp)) != NULL && j <= i)
   {
     if (ep->d_name[0] == 'c' && ep->d_name[1] == 'u' &&
         ep->d_name[2] == '.')
     {
       if (j == i)
       {
-        strncpy(devicenames[j], "/dev/", 5);
-        strncpy(devicenames[j] + 5, ep->d_name, 255);
-        devicenames[j][255 + 5] = '\0';
+        strncpy(devicename, "/dev/", 5);
+        strncpy(devicename + 5, ep->d_name, 255);
+        devicename[255 + 5] = '\0';
         closedir(dirp);
-        return devicenames[j];
+        return devicename;
       }
       j++;
     }
