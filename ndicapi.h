@@ -48,7 +48,7 @@ POSSIBILITY OF SUCH DAMAGES.
 #include <stdarg.h>
 #include <limits.h>
 
-#define NDICAPI_MAJOR_VERSION 1
+#define NDICAPI_MAJOR_VERSION 3
 #define NDICAPI_MINOR_VERSION 7
 
 // Max tools is 12 active plus 9 passive, so 24 is a safe number
@@ -184,6 +184,26 @@ struct ndicapi
   float BxPassiveStrayPosition[240][3]; // hold up to 240 stray markers
 
   int BxSystemStatus;
+
+  // BX2 command reply data
+  unsigned short Bx2GBFVersion;
+  unsigned short Bx2ComponentCount;
+  unsigned int Bx2ReplyLength;
+  unsigned char Bx2FrameType;
+  unsigned int Bx2FrameNumber;
+  float Bx2Transforms[NDI_MAX_HANDLES][8];
+  unsigned char Bx2FrameSequenceIndex;
+  unsigned char Bx2Timestamp[8];
+  unsigned int Bx2HandleCount;
+  unsigned short Bx2Handles[NDI_MAX_HANDLES];
+  unsigned short Bx2HandlesStatus[NDI_MAX_HANDLES];
+  bool Bx2HandleAveragingEnabled[NDI_MAX_HANDLES];
+  unsigned short Bx2SystemAlerts[256][2]; // Type and value together
+  unsigned int Bx2SystemAlertsCount;
+
+  unsigned short Bx2_3DMarkerCount[NDI_MAX_HANDLES];
+  char Bx2_3DMarkerStatus[NDI_MAX_HANDLES][20];
+  float Bx2_3DMarkerPosition[NDI_MAX_HANDLES][20][3]; // a tool can have up to 20 markers
 };
 
 typedef struct ndicapi ndicapi;
@@ -1617,10 +1637,86 @@ Get an 16-bit status bitfield for the system.
 - NDI_PORT_OCCUPIED              0x0040
 - NDI_PORT_UNOCCUPIED            0x0080
 
-<p>The system stutus information is updated whenever the BX command is
+<p>The system status information is updated whenever the BX command is
 called with the NDI_XFORMS_AND_STATUS (0x0001) bit set in the reply mode.
 */
 ndicapiExport int ndiGetBXSystemStatus(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get the transformation for the specified port. The first four numbers are a quaternion,
+the next three numbers are the coordinates in millimeters, and the final number is a
+unitless error estimate.
+
+\param pol       valid NDI device handle
+\param ph        valid port handle in range 0x01 to 0xFF
+\param transform space for the 8 numbers in the transformation
+
+\return one of the following:
+- NDI_OKAY if successful
+- NDI_DISABLED if tool port is nonexistent or disabled
+- NDI_MISSING if tool transform cannot be computed
+
+<p>If NDI_DISABLED or NDI_MISSING is returned, then the values in the supplied transform array will be left unchanged.
+
+The transformations for each of the port handles remain the same until the next BX2 command is sent to device.
+*/
+ndicapiExport int ndiGetBX2Transform(ndicapi* pol, int portHandle, float transform[8]);
+
+/*! \ingroup GetMethods
+Get the 16-bit status value for the specified port handle.
+
+\param pol         valid NDI device handle
+\param portHandle  valid port handle in range 0x01 to 0xFF
+
+This information is updated each time that the BX2 command is sent to the device.
+*/
+ndicapiExport unsigned short ndiGetBX2PortStatus(ndicapi* pol, int portHandle);
+
+/*! \ingroup GetMethods
+Get the length of the last BX2 command reply
+
+\param pol       valid NDI device handle
+\param portHandle  valid port handle in range 0x01 to 0xFF
+
+\return the number of bytes in the reply
+
+*/
+ndicapiExport unsigned int ndiGetBX2ReplyLength(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get an 16-bit status bitfield for the system.
+
+\param pol       valid NDI device handle
+\param index     the alert to access, use ndiGetBX2SystemAlertsCount
+
+<p>The system status information is updated whenever the BX2 command is called
+*/
+ndicapiExport unsigned short* ndiGetBX2SystemAlert(ndicapi* pol, int index);
+ndicapiExport int ndiGetBX2SystemAlertsCount(ndicapi* pol);
+
+/*! \ingroup GetMethods
+Get the camera frame number for the latest BX2 frame.
+
+\param pol       valid NDI device handle
+
+\return a 32 - bit frame number, or zero if no information was available
+
+This information is updated each time that the BX2 command is sent to the device.
+*/
+ndicapiExport unsigned int ndiGetBX2Frame(ndicapi * pol);
+
+/*! \ingroup GetMethods
+Get the camera frame number for the latest BX2 frame.
+
+\param pol         valid NDI device handle
+\param portHandle  valid port handle in range 0x01 to 0xFF
+
+\return a boolean indicating if averaging is enabled for the given handle
+
+This information is updated each time that the BX2 command is sent to the device.
+*/
+ndicapiExport bool ndiGetBX2HandleAveragingEnabled(ndicapi* pol, int portHandle);
+
 
 /*! \ingroup GetMethods
   Get the 8-bit status value for the specified port.
@@ -1926,44 +2022,73 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 */
 
 /*\{*/
-#define NDI_OKAY            0x00  /*!<\brief No error */
-#define NDI_INVALID         0x01  /*!<\brief Invalid command */
-#define NDI_TOO_LONG        0x02  /*!<\brief Command too long */
-#define NDI_TOO_SHORT       0x03  /*!<\brief Command too short */
-#define NDI_BAD_COMMAND_CRC 0x04  /*!<\brief Bad CRC calculated for command */
-#define NDI_INTERN_TIMEOUT  0x05  /*!<\brief Timeout on command execution */
-#define NDI_COMM_FAIL       0x06  /*!<\brief New communication parameters failed */
-#define NDI_PARAMETERS      0x07  /*!<\brief Incorrect number of command parameters */
-#define NDI_INVALID_PORT    0x08  /*!<\brief Invalid port selected */
-#define NDI_INVALID_MODE    0x09  /*!<\brief Invalid mode selected */
-#define NDI_INVALID_LED     0x0a  /*!<\brief Invalid LED selected */
-#define NDI_LED_STATE       0x0b  /*!<\brief Invalid LED state selected */
-#define NDI_BAD_MODE        0x0c  /*!<\brief Command invalid for current mode */
-#define NDI_NO_TOOL         0x0d  /*!<\brief No tool plugged in selected port */
-#define NDI_PORT_NOT_INIT   0x0e  /*!<\brief Selected port not initialized */
-#define NDI_PORT_DISABLED   0x0f  /*!<\brief Selected port not enabled */
-#define NDI_INITIALIZATION  0x10  /*!<\brief System not initialized */
-#define NDI_TSTOP_FAIL      0x11  /*!<\brief Failure to stop tracking */
-#define NDI_TSTART_FAIL     0x12  /*!<\brief Failure to start tracking */
-#define NDI_PINIT_FAIL      0x13  /*!<\brief Failure to initialize tool in port */
-#define NDI_CAMERA          0x14  /*!<\brief Invalid camera parameters */
-#define NDI_INIT_FAIL       0x15  /*!<\brief Failure to initialize */
-#define NDI_DSTART_FAIL     0x16  /*!<\brief Failure to start diagnostic mode */
-#define NDI_DSTOP_FAIL      0x17  /*!<\brief Failure to stop diagnostic mode */
-#define NDI_IRCHK_FAIL      0x18  /*!<\brief Failure to determine environmental IR */
-#define NDI_FIRMWARE        0x19  /*!<\brief Failure to read firmware version */
-#define NDI_INTERNAL        0x1a  /*!<\brief Internal device error */
-#define NDI_IRINIT_FAIL     0x1b /*!<\brief Failure to initialize for IR diagnostics*/
-#define NDI_IRED_FAIL       0x1c  /*!<\brief Failure to set marker firing signature */
-#define NDI_SROM_FAIL       0x1d  /*!<\brief Failure to search for SROM IDs */
-#define NDI_SROM_READ       0x1e  /*!<\brief Failure to read SROM data */
-#define NDI_SROM_WRITE      0x1f  /*!<\brief Failure to write SROM data */
-#define NDI_SROM_SELECT     0x20  /*!<\brief Failure to select SROM */
-#define NDI_PORT_CURRENT    0x21  /*!<\brief Failure to perform tool current test */
-#define NDI_WAVELENGTH      0x22 /*!<\brief No camera parameters for this wavelength*/
-#define NDI_PARAMETER_RANGE 0x23  /*!<\brief Command parameter out of range */
-#define NDI_VOLUME          0x24  /*!<\brief No camera parameters for this volume */
-#define NDI_FEATURES        0x25  /*!<\brief Failure to determine supported features*/
+#define NDI_OKAY                   0x00  /*!<\brief No error */
+#define NDI_INVALID                0x01  /*!<\brief Invalid command */
+#define NDI_TOO_LONG               0x02  /*!<\brief Command too long */
+#define NDI_TOO_SHORT              0x03  /*!<\brief Command too short */
+#define NDI_BAD_COMMAND_CRC        0x04  /*!<\brief Bad CRC calculated for command */
+#define NDI_INTERN_TIMEOUT         0x05  /*!<\brief Timeout on command execution */
+#define NDI_COMM_FAIL              0x06  /*!<\brief New communication parameters failed */
+#define NDI_PARAMETERS             0x07  /*!<\brief Incorrect number of command parameters */
+#define NDI_INVALID_PORT           0x08  /*!<\brief Invalid port selected */
+#define NDI_INVALID_MODE           0x09  /*!<\brief Invalid mode selected */
+#define NDI_INVALID_LED            0x0a  /*!<\brief Invalid LED selected */
+#define NDI_LED_STATE              0x0b  /*!<\brief Invalid LED state selected */
+#define NDI_BAD_MODE               0x0c  /*!<\brief Command invalid for current mode */
+#define NDI_NO_TOOL                0x0d  /*!<\brief No tool plugged in selected port */
+#define NDI_PORT_NOT_INIT          0x0e  /*!<\brief Selected port not initialized */
+#define NDI_PORT_DISABLED          0x0f  /*!<\brief Selected port not enabled */
+#define NDI_INITIALIZATION         0x10  /*!<\brief System not initialized */
+#define NDI_TSTOP_FAIL             0x11  /*!<\brief Failure to stop tracking */
+#define NDI_TSTART_FAIL            0x12  /*!<\brief Failure to start tracking */
+#define NDI_PINIT_FAIL             0x13  /*!<\brief Failure to initialize tool in port */
+#define NDI_INVALID_PS_PARAM       0x14  /*!<\brief Invalid Position Sensor characterization parameters */
+#define NDI_INIT_FAIL              0x15  /*!<\brief Unable to initialize the system */
+#define NDI_DSTART_FAIL            0x16  /*!<\brief Failure to start diagnostic mode */
+#define NDI_DSTOP_FAIL             0x17  /*!<\brief Failure to stop diagnostic mode */
+#define NDI_RESERVED18             0x18  /*!<\brief Reserved 0x18 */
+#define NDI_FIRMWARE_VER           0x19  /*!<\brief Failure to read firmware version */
+#define NDI_INTERNAL               0x1a  /*!<\brief Internal device error */
+#define NDI_RESERVED1B             0x1b  /*!<\brief Reserved 0x1B */
+#define NDI_IRED_FAIL              0x1c  /*!<\brief Failure to set marker firing signature */
+#define NDI_RESERVED1D             0x1d  /*!<\brief Reserved 0x1D */
+#define NDI_SROM_READ              0x1e  /*!<\brief Failure to read SROM data */
+#define NDI_SROM_WRITE             0x1f  /*!<\brief Failure to write SROM data */
+#define NDI_RESERVED20             0x20  /*!<\brief Reserved 0x20 */
+#define NDI_PORT_CURRENT           0x21  /*!<\brief Failure to perform tool current test */
+#define NDI_WAVELENGTH             0x22  /*!<\brief Enabled tools are not supported by selected volume parameters. For example, a Position Sensor cannot track a tool if the volume parameter set does not include the marker wavelength of an enabled tool. */
+#define NDI_PARAMETER_RANGE        0x23  /*!<\brief Command parameter out of range */
+#define NDI_VOLUME                 0x24  /*!<\brief No camera parameters for this volume */
+#define NDI_FEATURES               0x25  /*!<\brief Failure to determine supported features*/
+#define NDI_RESERVED26             0x26  /*!<\brief Reserved 0x26 */
+#define NDI_RESERVED27             0x27  /*!<\brief Reserved 0x27 */
+#define NDI_TOO_MANY_TOOLS         0x28 /*!<\brief Too many tools are enabled, the configuration of tools loaded requires too many frames, or this tool type is not supported. */
+#define NDI_RESERVED29             0x29 /*!<\brief Reserved 0x29 */
+#define NDI_HEAP_FULL              0x2A /*!<\brief No memory is available for dynamic allocation(heap is full). */
+#define NDI_HANDLE_NOT_ALLOC       0x2B /*!<\brief The requested port handle has not been allocated. */
+#define NDI_HANDLE_EMPTY           0x2C /*!<\brief The requested port handle has become unoccupied. */
+#define NDI_HANDLES_FULL           0x2D /*!<\brief All handles have been allocated. */
+#define NDI_INCOMP_FIRM_VER        0x2E /*!<\brief Incompatible firmware versions.This can occur if: • a firmware update failed • components with incompatible firmware are connected To correct the problem, update the firmware.If the Multi Firmware feature is installed, select a valid combined firmware revision.For more information, see “Multi Firmware Feature” on page 197. */
+#define NDI_INV_PORT_DESC          0x2F /*!<\brief Invalid port description. */
+#define NDI_PORT_HAS_HANDLE        0x30 /*!<\brief Requested port is already assigned a port handle. */
+#define NDI_RESERVED31             0x31 /*!<\brief Reserved 0x31 */
+#define NDI_INVALID_OP             0x32 /*!<\brief Invalid operation for the device associated with the specified port handle. */
+#define NDI_NO_FEATURE             0x33 /*!<\brief Feature not available. */
+#define NDI_NO_USER_PARAM          0x34 /*!<\brief User parameter does not exist. */
+#define NDI_BAD_VALUE              0x35 /*!<\brief Invalid value type(e.g.string instead of integer). */
+#define NDI_USER_PARAM_VALUE_RANGE 0x36 /*!<\brief User parameter value set is out of valid range. */
+#define NDI_USER_PARAM_INDEX_RANGE 0x37 /*!<\brief User parameter array index is out of valid range. */
+#define NDI_BAD_USER_PARAM_SIZE    0x38 /*!<\brief User parameter size is incorrect. */
+#define NDI_PERM_DENIED            0x39 /*!<\brief Permission denied; file or user parameter is read - only, or a command which requires master mode is attempted from a monitor mode connection. */
+#define NDI_RESERVED3A             0x3A /*!<\brief Reserved 0x3A */
+#define NDI_FILE_NOT_FOUND         0x3B /*!<\brief File not found. */
+#define NDI_FERR_WRITE             0x3C /*!<\brief Error writing to file. */
+#define NDI_FERR_READ              0x3D /*!<\brief Error reading from file. */
+#define NDI_RESERVED3E             0x3E /*!<\brief Reserved 0x3E */
+#define NDI_RESERVED3F             0x3F /*!<\brief Reserved 0x3F*/
+#define NDI_DEF_FILE_ERR           0x40 /*!<\brief Tool Definition File Error.This occurs if: • the CRC failed • the file format is invalid */
+#define NDI_BAD_CHARACTERISTICS    0x41 /*!<\brief Tool characteristics not supported.This occurs when one of the following fields in the tool definition file is outside of the range supported by the system : • number of markers • number of faces • number of groups • number of markers per face(unique geometry tools only) */
+#define NDI_NO_DEVICE              0x42 /*!<\brief Device not present.This occurs when the command is specific to a device that is not connected to the system. */
 
 #define NDI_ENVIRONMENT     0xf1  /*!<\brief Too much environmental infrared */
 #define NDI_EEPROM_ERASE    0xf4  /*!<\brief Failure to erase Flash EEPROM */
@@ -1987,6 +2112,22 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define NDI_COMMAND_VER_FAILED    0x0203  /*!<\brief VER command failed */
 /*\}*/
 
+/* ndi GBF component IDs */
+/*\{*/
+#define NDI_COMPONENTID_FRAME      0x0001
+#define NDI_COMPONENTID_6D         0x0002
+#define NDI_COMPONENTID_3D         0x0003
+#define NDI_COMPONENTID_1D         0x0004
+#define NDI_COMPONENTID_2D         0x0005
+// 06 – reserved
+// 07 – reserved
+#define NDI_COMPONENTID_LINE_SEP   0x0008
+#define NDI_COMPONENTID_3D_ERROR   0x0009
+#define NDI_COMPONENTID_IMAGE      0x0010
+// 11 to 16 – reserved
+#define NDI_COMPONENTID_UV         0x0011
+#define NDI_COMPONENTID_SYS_ALERT  0x0012
+/*\}*/
 
 /* ndiCOMM() baud rates */
 /*\{*/
@@ -2083,6 +2224,39 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define  NDI_PARTIALLY_IN_VOLUME  0x80 /* only for ndiGetGXPortStatus() */
 #define  NDI_CURRENT_DETECT       0x80 /* only for ndiGetPSTATPortStatus() */
 /*\}*/
+
+/* ndiGetBX2PortStatus() return value bits */
+/*\{*/
+#define NDI_BX2_ENABLED               0 //Enabled
+#define NDI_BX2_PARTIAL_VIEW          3 //Tool is partially out of the characterized measurement volume
+#define NDI_BX2_PARTIAL_AVG           5 //Data is partially averaged; averaging depth is less than specified
+#define NDI_BX2_OUT_OF_VOLUME         9 //Tool is out of the characterized measurement volume
+
+// The following error codes are reported only if the tool is missing
+#define NDI_BX2_TOO_FEW_MARKERS       13 // Too few markers detected
+#define NDI_BX2_IR_INTERFERENCE       14 // IR interference (a large bright IR object)
+#define NDI_BX2_BAD_XFORM_FIT         17 // Bad transformation fit
+#define NDI_BX2_BUFFER_LIMIT          18 // Data buffer limitation (too much data; for example, too many markers)
+#define NDI_BX2_ALGO_LIMIT            19 // Algorithm limitation (processing requires more buffer than is available)
+#define NDI_BX2_CANT_KEEP_UP          20 // Fell behind while processing
+#define NDI_BX2_OUT_OF_SYNC           21 // Position sensors out of synch
+#define NDI_BX2_PROC_EXCEP            22 // Processing exception
+#define NDI_BX2_TOOL_MISSING          31 // Tool is missing
+#define NDI_BX2_TRACKING_NOT_ENABLED  32 // Tracking is not enabled for this tool
+#define NDI_BX2_TOOL_UNPLUGGED        33 // Tool has been unplugged from the System Control Unit
+/*\}*/
+
+#define NDI_BX2_MISSING_BIT 0x0100
+#define NDI_BX2_AVG_BIT     0x0200
+
+#define NDI_SYS_ALERT_FAULT 0x01
+#define NDI_SYS_ALERT_ALERT 0x02
+#define NDI_SYS_ALERT_EVENT 0x04
+
+#define NDI_SYS_EVENT_TOOL_CONNECTED      1
+#define NDI_SYS_EVENT_TOOL_DISCONNECTED   2
+#define NDI_SYS_EVENT_HW_CHANGED          5
+#define NDI_SYS_EVENT_PTP_MASTER_CHANGED  6
 
 /* ndiGetTXSystemStatus() return value bits */
 /*\{*/
