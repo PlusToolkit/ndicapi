@@ -75,6 +75,19 @@ namespace
 
     return errnum;
   }
+
+  void parseComponents(ndicapi* api, const char* data);
+
+  void parseFrameComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse6DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse3DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse1DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse2DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parseLineSepComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse3DErrorComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parse1DImageComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parseUVComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
+  void parseSystemAlertComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount);
 }
 
 //----------------------------------------------------------------------------
@@ -495,57 +508,75 @@ ndicapiExport int ndiGetSocketError(ndicapi* pol)
 //----------------------------------------------------------------------------
 ndicapiExport const char* ndiErrorString(int errnum)
 {
-  static const char* textarray_low[] = // values from 0x01 to 0x21
+  static const char* textarray_low[] = // values from 0x01 to 0x43
   {
-    "No error",
-    "Invalid command",
-    "Command too long",
-    "Command too short",
-    "Invalid CRC calculated for command",
-    "Time-out on command execution",
-    "Unable to set up new communication parameters",
-    "Incorrect number of command parameters",
-    "Invalid port handle selected",
-    "Invalid tracking priority selected (must be S, D or B)",
-    "Invalid LED selected",
-    "Invalid LED state selected (must be B, F or S)",
-    "Command is invalid while in the current mode",
-    "No tool assigned to the selected port handle",
-    "Selected port handle not initialized",
-    "Selected port handle not enabled",
-    "System not initialized",
-    "Unable to stop tracking",
-    "Unable to start tracking",
-    "Unable to initialize Tool-in-Port",
-    "Invalid Position Sensor or Field Generator characterization parameters",
-    "Unable to initialize the Measurement System",
-    "Unable to start diagnostic mode",
-    "Unable to stop diagnostic mode",
-    "Unable to determine environmental infrared or magnetic interference",
-    "Unable to read device's firmware version information",
-    "Internal Measurement System error",
-    "Unable to initialize for environmental infrared diagnostics",
-    "Unable to set marker firing signature",
-    "Unable to search for SROM IDs",
-    "Unable to read SROM data",
-    "Unable to write SROM data",
-    "Unable to select SROM",
-    "Unable to perform tool current test",
-    "Unable to find camera parameters from the selected volume for the wavelength of a tool enabled for tracking",
-    "Command parameter out of range",
-    "Unable to select parameters by volume",
-    "Unable to determine Measurement System supported features list",
-    "Reserved - Unrecognized Error 0x26",
-    "Reserved - Unrecognized Error 0x27",
-    "SCU hardware has changed state; a card has been removed or added",
-    "Main processor firmware corrupt",
-    "No memory available for dynamic allocation (heap is full)",
-    "Requested handle has not been allocated",
-    "Requested handle has become unoccupied",
-    "All handles have been allocated",
-    "Invalid port description",
-    "Requested port already assigned to a port handle",
-    "Invalid input or output state",
+    /* 0x01 */ "No error",
+    /* 0x02 */ "Invalid command",
+    /* 0x03 */ "Command too long",
+    /* 0x04 */ "Command too short",
+    /* 0x05 */ "Invalid CRC calculated for command",
+    /* 0x06 */ "Time-out on command execution",
+    /* 0x07 */ "Unable to set up new communication parameters",
+    /* 0x08 */ "Incorrect number of command parameters",
+    /* 0x09 */ "Invalid port handle selected",
+    /* 0x0A */ "Invalid tracking priority selected (must be S, D or B)",
+    /* 0x0B */ "Invalid LED selected",
+    /* 0x0C */ "Invalid LED state selected (must be B, F or S)",
+    /* 0x0D */ "Command is invalid while in the current mode",
+    /* 0x0E */ "No tool assigned to the selected port handle",
+    /* 0x0F */ "Selected port handle not initialized",
+    /* 0x10 */ "Selected port handle not enabled",
+    /* 0x11 */ "System not initialized",
+    /* 0x12 */ "Unable to stop tracking",
+    /* 0x13 */ "Unable to start tracking",
+    /* 0x14 */ "Unable to initialize Tool-in-Port",
+    /* 0x15 */ "Invalid Position Sensor or Field Generator characterization parameters",
+    /* 0x16 */ "Unable to initialize the Measurement System",
+    /* 0x17 */ "Unable to start diagnostic mode",
+    /* 0x18 */ "Unable to stop diagnostic mode",
+    /* 0x19 */ "Unable to determine environmental infrared or magnetic interference",
+    /* 0x1A */ "Unable to read device's firmware version information",
+    /* 0x1B */ "Internal Measurement System error",
+    /* 0x1C */ "Unable to initialize for environmental infrared diagnostics",
+    /* 0x1D */ "Unable to set marker firing signature",
+    /* 0x1E */ "Unable to search for SROM IDs",
+    /* 0x1F */ "Unable to read SROM data",
+    /* 0x20 */ "Unable to write SROM data",
+    /* 0x21 */ "Unable to select SROM",
+    /* 0x22 */ "Unable to perform tool current test",
+    /* 0x23 */ "Unable to find camera parameters from the selected volume for the wavelength of a tool enabled for tracking",
+    /* 0x24 */ "Command parameter out of range",
+    /* 0x25 */ "Unable to select parameters by volume",
+    /* 0x26 */ "Unable to determine Measurement System supported features list",
+    /* 0x27 */ "Reserved - Unrecognized Error 0x26",
+    /* 0x28 */ "Reserved - Unrecognized Error 0x27",
+    /* 0x29 */ "Too many tools are enabled, the configuration of tools loaded requires too many frames, or this tool type is not supported",
+    /* 0x2A */ "Main processor firmware corrupt",
+    /* 0x2B */ "No memory available for dynamic allocation (heap is full)",
+    /* 0x2C */ "Requested handle has not been allocated",
+    /* 0x2D */ "Requested handle has become unoccupied",
+    /* 0x2E */ "All handles have been allocated",
+    /* 0x2F */ "Incompatible firmware versions",
+    /* 0x30 */ "Invalid port description",
+    /* 0x31 */ "Requested port already assigned to a port handle",
+    /* 0x32 */ "Reserved - Unrecognized Error 0x31",
+    /* 0x33 */ "Invalid operation for the device associated with the specified port handle",
+    /* 0x34 */ "Feature not available",
+    /* 0x35 */ "User parameter does not exist",
+    /* 0x36 */ "Invalid value type(e.g.string instead of integer)",
+    /* 0x37 */ "User parameter value set is out of valid range",
+    /* 0x38 */ "User parameter array index is out of valid range",
+    /* 0x39 */ "User parameter size is incorrect",
+    /* 0x3A */ "Permission denied; file or user parameter is read - only, or a command which requires master mode is attempted from a monitor mode connection",
+    /* 0x3B */ "Reserved - Unrecognized Error 0x3A",
+    /* 0x3C */ "File not found",
+    /* 0x3D */ "Error writing to file",
+    /* 0x3E */ "Error reading from file",
+    /* 0x3F */ "Reserved - Unrecognized Error 0x3E",
+    /* 0x40 */ "Reserved - Unrecognized Error 0x3F",
+    /* 0x41 */ "Tool Definition File Error. This occurs if: the CRC failed or the file format is invalid",
+    /* 0x42 */ "Tool characteristics not supported",
+    /* 0x43 */ "Device not present",
   };
 
   static const char* textarray_high[] = // values from 0xf6 to 0xf4
@@ -578,7 +609,7 @@ ndicapiExport const char* ndiErrorString(int errnum)
     "Command VER failed"
   };
 
-  if (errnum >= 0x00 && errnum <= 0x31)
+  if (errnum >= 0x00 && errnum <= 0x43)
   {
     return textarray_low[errnum];
   }
@@ -1518,13 +1549,399 @@ namespace
   }
 
   //----------------------------------------------------------------------------
+  // Parse the GBF format and return the number of bytes to skip
+  void parseComponents(ndicapi* api, const char* data)
+  {
+    const char* componentIndex = data;
+
+    // GBF version
+    api->Bx2GBFVersion = (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+    componentIndex += 2;
+    // GBF Component count
+    unsigned short componentCount = (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+    componentIndex += 2;
+
+    unsigned int totalSkipLength(0);
+    for (unsigned short i = 0; i < componentCount; ++i)
+    {
+      // Component
+      unsigned short componentType = (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+      componentIndex += 2;
+      unsigned int componentSize = (unsigned char)componentIndex[3] << 24 | (unsigned char)componentIndex[2] << 16 | (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+      componentIndex += 4;
+      unsigned short itemOption = (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+      componentIndex += 2;
+      unsigned int itemCount = (unsigned char)componentIndex[3] << 24 | (unsigned char)componentIndex[2] << 16 | (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+      componentIndex += 4;
+
+      switch (componentType)
+      {
+      case NDI_COMPONENTID_FRAME:
+        parseFrameComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_6D:
+        parse6DComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_3D:
+        parse3DComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_1D:
+        parse1DComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_2D:
+        parse2DComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_LINE_SEP:
+        parseLineSepComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_3D_ERROR:
+        parse3DErrorComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_IMAGE:
+        parse1DImageComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_UV:
+        parseUVComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      case NDI_COMPONENTID_SYS_ALERT:
+        parseSystemAlertComponent(api, componentIndex, itemOption, itemCount);
+        break;
+      default:
+        // Unknown component type, do nothing
+        break;
+      }
+
+      componentIndex += componentSize - 12; // skip component size - header size
+    }
+  }
+
+  //----------------------------------------------------------------------------
+void parseFrameComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    const char* componentIndex = data;
+
+    // Frame Type
+    api->Bx2FrameType = (unsigned char)componentIndex[0];
+    componentIndex += 1;
+    // Frame sequence index
+    api->Bx2FrameSequenceIndex = (unsigned char)componentIndex[0];
+    componentIndex += 1;
+    // Frame status
+    unsigned short frameStatus = (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+    componentIndex += 2;
+    // Frame number
+    api->Bx2FrameNumber = (unsigned char)componentIndex[3] << 24 | (unsigned char)componentIndex[2] << 16 | (unsigned char)componentIndex[1] << 8 | (unsigned char)componentIndex[0];
+    componentIndex += 4;
+    // Timestamp
+    for (int i = 0; i < 8; ++i)
+    {
+      api->Bx2Timestamp[7-i] = (unsigned char)componentIndex[0];
+      componentIndex++;
+    }
+
+    parseComponents(api, componentIndex);
+  }
+
+  //----------------------------------------------------------------------------
+  void parse6DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    const char* dataIndex = data;
+
+    // Limitation of the API (for now, can go c++ and remove it)
+    api->Bx2HandleCount = itemCount < NDI_MAX_HANDLES ? itemCount : NDI_MAX_HANDLES;
+
+    // Go through the information for each handle
+    for (unsigned int i = 0; i < api->Bx2HandleCount; i++)
+    {
+      // get the handle itself
+      api->Bx2Handles[i] = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+
+      api->Bx2HandlesStatus[i] = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+
+      if (api->Bx2HandlesStatus[i] & NDI_BX2_AVG_BIT)
+      {
+        api->Bx2HandleAveragingEnabled[i] = true;
+      }
+
+      // Disabled handles have no reply data
+      if (api->Bx2HandlesStatus[i] & NDI_BX2_MISSING_BIT)
+      {
+        continue;
+      }
+
+      // 4 float, Q0, Qx, Qy, Qz
+      api->Bx2Transforms[i][0] = *(float*)dataIndex;
+      dataIndex += 4;
+      api->Bx2Transforms[i][1] = *(float*)dataIndex;
+      dataIndex += 4;
+      api->Bx2Transforms[i][2] = *(float*)dataIndex;
+      dataIndex += 4;
+      api->Bx2Transforms[i][3] = *(float*)dataIndex;
+      dataIndex += 4;
+
+      // 3 float, Tx, Ty, Tz
+      api->Bx2Transforms[i][4] = *(float*)dataIndex;
+      dataIndex += 4;
+      api->Bx2Transforms[i][5] = *(float*)dataIndex;
+      dataIndex += 4;
+      api->Bx2Transforms[i][6] = *(float*)dataIndex;
+      dataIndex += 4;
+
+      // 1 float, RMS error
+      api->Bx2Transforms[i][7] = *(float*)dataIndex;
+      dataIndex += 4;
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  void parse3DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    const char* dataIndex = data;
+
+    // Limitation of the API (for now, can go c++ and remove it)
+    unsigned int handleCount = itemCount < NDI_MAX_HANDLES ? itemCount : NDI_MAX_HANDLES;
+
+    // Go through the information for each handle
+    for (unsigned int i = 0; i < handleCount; i++)
+    {
+      // get the handle itself
+      unsigned short handle = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+
+      unsigned short numberOf3Ds = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+
+      for (unsigned short j = 0; j < numberOf3Ds; ++j)
+      {
+        api->Bx2_3DMarkerStatus[i][j] = (char)dataIndex[0];
+        dataIndex++;
+
+        unsigned char reserved = (unsigned char)dataIndex[0];
+        dataIndex++;
+
+        // Is this needed? not saved for now
+        unsigned short markerIndex = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+        dataIndex += 2;
+
+        // 3 float, Tx, Ty, Tz
+        api->Bx2_3DMarkerPosition[i][j][0] = *(float*)dataIndex;
+        dataIndex += 4;
+        api->Bx2_3DMarkerPosition[i][j][1] = *(float*)dataIndex;
+        dataIndex += 4;
+        api->Bx2_3DMarkerPosition[i][j][2] = *(float*)dataIndex;
+        dataIndex += 4;
+      }
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  void parse1DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+  void parse2DComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+  void parseLineSepComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+  void parse3DErrorComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+
+  }
+
+  //----------------------------------------------------------------------------
+  void parse1DImageComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    
+  }
+
+  //----------------------------------------------------------------------------
+  void parseUVComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    
+  }
+
+  //----------------------------------------------------------------------------
+  void parseSystemAlertComponent(ndicapi* api, const char* data, unsigned short itemOption, unsigned int itemCount)
+  {
+    const char* dataIndex = data;
+    api->Bx2SystemAlertsCount = itemCount;
+    for (unsigned short i = 0; i < itemCount; ++i)
+    {
+      api->Bx2SystemAlerts[i][0] = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+
+      api->Bx2SystemAlerts[i][1] = (unsigned char)dataIndex[1] << 8 | (unsigned char)dataIndex[0];
+      dataIndex += 2;
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  // Copy all the BX2 reply information into the ndicapi structure, according
+  // to the BX2 reply mode that was requested.
+  //
+  // This function is called every time a BX2 command is sent to the Measurement System.
+  //
+  // This information can be later extracted through one of the ndiGetBXxx() functions.
+  void ndiBX2Helper(ndicapi* api, const char* command, const char* commandReply)
+  {
+    // Reply options
+    // --6d = tools | none Specifies whether 6D information for tools is returned.The default is tools.
+    // --3d = none | tools | strays | all Specifies which 3D information is returned(none, tool 3Ds, stray 3Ds, or all 3Ds). The default is none.If selected, 3Ds are returned for all frame types, not just passive frames.
+    // --2d = none | tools | strays | all Specifies which 2D(line of sight) information is returned. The default is none.
+    // --sensor = none | tools | strays | all Specifies which scaled sensor UV information is returned. Scaled UV can be used to visualize the images on the sensors and also provide diagnostic information related to UV brightness.The default is none.
+    // --1d = buttons | none Specifies whether buttons are reported.The default is buttons.
+
+    /* BX2 replies are in General Binary Format 
+    * 
+    * GBF is a container format that packages data components
+    * Each data component has a 12 byte header
+    * From the data component header, the data component can be parsed
+    * 
+    * ----------------------------
+    * | GBF Version 2 bytes      |
+    * ----------------------------
+    * | Component Count          |
+    * | 2 bytes                  |
+    * ----------------------------
+    * | ------------------------ |
+    * | |DataComponent1        | |
+    * | | -------------------- | |
+    * | | | Component Header | | |
+    * | | |                  | | |
+    * | | | Component Type 2 | | |
+    * | | | Component Size 4 | | |
+    * | | | Item Format    2 | | |
+    * | | | Item Count     4 | | |
+    * | | -------------------- | |
+    * | | | ---------------- | | |
+    * | | | | Items        | | | |
+    * | | | | -----------  | | | |
+    * | | | | | Item1   |  | | | |
+    * | | | | -----------  | | | |
+    * | | | | -----------  | | | |
+    * | | | | | Item2   |  | | | |
+    * | | | | -----------  | | | |
+    * | | | |   ...        | | | |
+    * | | | | -----------  | | | |
+    * | | | | | ItemX   |  | | | |
+    * | | | | -----------  | | | |
+    * | | | ---------------- | | |
+    * | | -------------------- | |
+    * | ------------------------ |
+    * | ------------------------ |
+    * | |DataComponent2        | |
+    * | ------------------------ |
+    * | ------------------------ |
+    * | |DataComponent3        | |
+    * | ------------------------ |
+    * ----------------------------
+    *
+    * Items each have a specific format
+    * 
+    * -------------------------------
+    * Frame Component: a container component that holds a GBF in its payload
+    *   Frame Type            1 byte - Frame Types are as follows:
+    *     0: DUMMY
+    *     1: ACTIVE_WIRELESS
+    *     2: PASSIVE
+    *     3: ACTIVE
+    *     4: LASER
+    *     5: ILLUMINATED
+    *     6: BACKGROUND
+    *     7: MAGNETIC
+    *   Frame Sequence Index  2 bytes
+    *   Frame Status          2 bytes - For bits 0 to 15, the field uses the same codes as the 6D Port/Tool Status, but only the ones which are applicable to the frame as a whole.
+    *   Frame Number          4 bytes
+    *   Frame Timestamp*      8 bytes struct timespec • Bytes 0-3: seconds since the start of the Unix epoch (1-Jan-1970 00:00:00 UTC) • Bytes 4-7: nanoseconds
+    *   Frame Data            Payload Variable - General Binary Format
+    *   
+    * ------------------------------
+    * 6D Data Component
+    *   Tool Handle                       2 bytes
+    *   Status                            2 bytes - See below
+    *   Q0, Qx, Qy, Qz, Tx, Ty, Tz, Error 4 bytes each
+    * 
+    *   Tool Status
+    *     Bit 0-7 Error codes as described in Port/Tool Status Error Codes.
+    *     Bit 8 Transform missing
+    *     Bit 9 Averaging Enabled
+    *     Bit 10-12 Reserved
+    *     Bit 13-15 Which face of a multi-face tool is being tracked
+    * 
+    * ------------------------------
+    * 3D Data Component
+    *   Tool Handle Reference 2 bytes - 0xffff for “stray” 3D
+    *   Number of 3Ds         2 bytes
+    *   Status                1 byte - See below
+    *   -reserved-            1 byte
+    *   Marker Index          2 bytes - index of marker on tool, sequential # for strays
+    *   X, Y, Z               4 bytes each
+    * 
+    *   Marker Status
+    *     0x00 OK
+    *     0x01 Missing (missing markers may not be reported in component at all)
+    *     0x02 Not used: exceeded max marker angle
+    *     0x03 Not used: exceeded max marker error for tool
+    *     0x04 Not used: Out of Volume
+    *     0x05 Out of Volume – used in 6D
+    *     0x06 Possible phantom marker (in volume, applies to stray markers only)
+    *     0x07 Saturated (in or out of volume, not used in 6D)
+    *     0x08 Saturated and out of volume (not used in 6D)
+    *     0x09 to 0xFF Reserved
+    * 
+    * For other components see API documentation
+    */
+
+    const char* replyIndex = &commandReply[0];
+    unsigned short headerCRC;
+    bool extendedHeader = false;
+
+    // Confirm start sequence
+    if (replyIndex[0] != (char)0xc4 || replyIndex[1] != (char)0xa5)  // little endian
+    {
+      if (replyIndex[0] != (char)0xc8 || replyIndex[1] != (char)0xa5)  // little endian
+      {
+        extendedHeader = true;
+      }
+      else
+      {
+        // Something isn't right, abort
+        return;
+      }
+    }
+    replyIndex += 2;
+
+    // Get the reply length
+    api->Bx2ReplyLength = 0;
+    api->Bx2ReplyLength = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
+    replyIndex += 2;
+
+    // Get the CRC
+    headerCRC = (unsigned char)replyIndex[1] << 8 | (unsigned char)replyIndex[0];
+    replyIndex += 2;
+
+    parseComponents(api, replyIndex);
+  }
+
+  //----------------------------------------------------------------------------
   // Copy all the BX reply information into the ndicapi structure, according
   // to the BX reply mode that was requested.
   //
   // This function is called every time a BX command is sent to the Measurement System.
   //
-  // This information can be later extracted through one of the ndiGetTXxx()
-  // functions.
+  // This information can be later extracted through one of the ndiGetBXxx() functions.
   void ndiBXHelper(ndicapi* api, const char* command, const char* commandReply)
   {
     // Reply options
@@ -2355,6 +2772,7 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   command[i] = '\0';                                // terminate for good luck
 
   bool isBinary = (strncmp(command, "BX", commandLength) == 0 && commandLength == strlen("BX")) ||
+                   (strncmp(command, "BX2", commandLength) == 0 && commandLength == strlen("BX2")) ||
                    (strncmp(command, "GETLOG", commandLength) == 0 && commandLength == strlen("GETLOG")) ||
                    (strncmp(command, "VGET", commandLength) == 0 && commandLength == strlen("VGET"));
 
@@ -2362,14 +2780,16 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   // if the command is GX, TX, or BX and thread_mode is on, we copy the reply from
   //  the thread rather than getting it directly from the Measurement System
   if (api->IsThreadedMode && api->IsTracking &&
-      commandLength == 2 && ((command[0] == 'G' && command[1] == 'X') ||
-                             (command[0] == 'T' && command[1] == 'X') ||
-                             (command[0] == 'B' && command[1] == 'X')))
+      (commandLength == 2 || commandLength == 3) && 
+        ((command[0] == 'G' && command[1] == 'X') ||
+        (command[0] == 'T' && command[1] == 'X') ||
+        (command[0] == 'B' && command[1] == 'X') || 
+        (command[0] == 'B' && command[1] == 'X' && command[2] == '2')))
   {
-    // check that the thread is sending the GX/BX/TX command that we want
+    // check that the thread is sending the GX/BX/TX/BX2 command that we want
     if (strcmp(command, api->ThreadCommand) != 0)
     {
-      // tell thread to start using the new GX/BX/TX command
+      // tell thread to start using the new GX/BX/TX/BX2 command
       ndiMutexLock(api->ThreadMutex);
       strcpy(api->ThreadCommand, command);
       api->IsThreadedCommandBinary = (command[0] == 'B');
@@ -2572,6 +2992,10 @@ ndicapiExport char* ndiCommandVA(ndicapi* api, const char* format, va_list ap)
   else if (command[0] == 'B' && command[1] == 'X' && commandLength == 2)   // the BX command
   {
     ndiBXHelper(api, command, commandReply);
+  }
+  else if (command[0] == 'B' && command[1] == 'X' && command[2] == '2' && commandLength == 3)   // the BX2 command
+  {
+    ndiBX2Helper(api, command, commandReply);
   }
   else if (command[0] == 'G' && command[1] == 'X' && commandLength == 2)   // the GX command
   {
@@ -3459,6 +3883,81 @@ ndicapiExport int ndiGetBXPassiveStray(ndicapi* pol, int i, float outCoord[3])
 ndicapiExport int ndiGetBXSystemStatus(ndicapi* pol)
 {
   return pol->BxSystemStatus;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBX2Transform(ndicapi* pol, int portHandle, float transform[8])
+{
+  int i, n;
+
+  n = pol->Bx2HandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->Bx2Handles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return NDI_DISABLED;
+  }
+
+  memcpy(&transform[0], &pol->Bx2Transforms[i][0], sizeof(float) * 8);
+  if (pol->Bx2HandlesStatus[i] & NDI_HANDLE_DISABLED)
+  {
+    return NDI_DISABLED;
+  }
+  else if (pol->Bx2HandlesStatus[i] & NDI_BX2_MISSING_BIT)
+  {
+    return NDI_MISSING;
+  }
+
+  return NDI_OKAY;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport unsigned short ndiGetBX2PortStatus(ndicapi* pol, int portHandle)
+{
+  int i, n;
+
+  n = pol->Bx2HandleCount;
+  for (i = 0; i < n; i++)
+  {
+    if (pol->Bx2Handles[i] == portHandle)
+    {
+      break;
+    }
+  }
+  if (i == n)
+  {
+    return 0;
+  }
+
+  return pol->Bx2HandlesStatus[i];
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport unsigned short* ndiGetBX2SystemAlert(ndicapi* pol, int index)
+{
+  if (index < pol->Bx2SystemAlertsCount)
+  {
+    return pol->Bx2SystemAlerts[index];
+  }
+
+  return nullptr;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport int ndiGetBX2SystemAlertsCount(ndicapi* pol)
+{
+  return pol->Bx2SystemAlertsCount;
+}
+
+//----------------------------------------------------------------------------
+ndicapiExport unsigned int ndiGetBX2Frame(ndicapi* pol)
+{
+  return pol->Bx2FrameNumber;
 }
 
 //----------------------------------------------------------------------------
