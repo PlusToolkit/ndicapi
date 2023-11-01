@@ -1764,6 +1764,7 @@ ndicapiExport MOD_INIT(ndicapy)
 
   Py_NDIConstantMacro(NDI_OKAY);
 
+  Py_NDIErrcodeMacro(NDI_OKAY);
   Py_NDIErrcodeMacro(NDI_INVALID);
   Py_NDIErrcodeMacro(NDI_TOO_LONG);
   Py_NDIErrcodeMacro(NDI_TOO_SHORT);
@@ -1783,22 +1784,53 @@ ndicapiExport MOD_INIT(ndicapy)
   Py_NDIErrcodeMacro(NDI_TSTOP_FAIL);
   Py_NDIErrcodeMacro(NDI_TSTART_FAIL);
   Py_NDIErrcodeMacro(NDI_PINIT_FAIL);
+  Py_NDIErrcodeMacro(NDI_INVALID_PS_PARAM);
+  Py_NDIErrcodeMacro(NDI_INIT_FAIL);
   Py_NDIErrcodeMacro(NDI_DSTART_FAIL);
   Py_NDIErrcodeMacro(NDI_DSTOP_FAIL);
-  Py_NDIErrcodeMacro(NDI_IRCHK_FAIL);
-  Py_NDIErrcodeMacro(NDI_FIRMWARE);
+  Py_NDIErrcodeMacro(NDI_RESERVED18);
+  Py_NDIErrcodeMacro(NDI_FIRMWARE_VER);
   Py_NDIErrcodeMacro(NDI_INTERNAL);
-  Py_NDIErrcodeMacro(NDI_IRINIT_FAIL);
+  Py_NDIErrcodeMacro(NDI_RESERVED1B);
   Py_NDIErrcodeMacro(NDI_IRED_FAIL);
-  Py_NDIErrcodeMacro(NDI_SROM_FAIL);
+  Py_NDIErrcodeMacro(NDI_RESERVED1D);
   Py_NDIErrcodeMacro(NDI_SROM_READ);
   Py_NDIErrcodeMacro(NDI_SROM_WRITE);
-  Py_NDIErrcodeMacro(NDI_SROM_SELECT);
+  Py_NDIErrcodeMacro(NDI_RESERVED20);
   Py_NDIErrcodeMacro(NDI_PORT_CURRENT);
   Py_NDIErrcodeMacro(NDI_WAVELENGTH);
   Py_NDIErrcodeMacro(NDI_PARAMETER_RANGE);
   Py_NDIErrcodeMacro(NDI_VOLUME);
   Py_NDIErrcodeMacro(NDI_FEATURES);
+  Py_NDIErrcodeMacro(NDI_RESERVED26);
+  Py_NDIErrcodeMacro(NDI_RESERVED27);
+  Py_NDIErrcodeMacro(NDI_TOO_MANY_TOOLS);
+  Py_NDIErrcodeMacro(NDI_RESERVED29);
+  Py_NDIErrcodeMacro(NDI_HEAP_FULL);
+  Py_NDIErrcodeMacro(NDI_HANDLE_NOT_ALLOC);
+  Py_NDIErrcodeMacro(NDI_HANDLE_EMPTY);
+  Py_NDIErrcodeMacro(NDI_HANDLES_FULL);
+  Py_NDIErrcodeMacro(NDI_INCOMP_FIRM_VER);
+  Py_NDIErrcodeMacro(NDI_INV_PORT_DESC);
+  Py_NDIErrcodeMacro(NDI_PORT_HAS_HANDLE);
+  Py_NDIErrcodeMacro(NDI_RESERVED31);
+  Py_NDIErrcodeMacro(NDI_INVALID_OP);
+  Py_NDIErrcodeMacro(NDI_NO_FEATURE);
+  Py_NDIErrcodeMacro(NDI_NO_USER_PARAM);
+  Py_NDIErrcodeMacro(NDI_BAD_VALUE);
+  Py_NDIErrcodeMacro(NDI_USER_PARAM_VALUE_RANGE);
+  Py_NDIErrcodeMacro(NDI_USER_PARAM_INDEX_RANGE);
+  Py_NDIErrcodeMacro(NDI_BAD_USER_PARAM_SIZE);
+  Py_NDIErrcodeMacro(NDI_PERM_DENIED);
+  Py_NDIErrcodeMacro(NDI_RESERVED3A);
+  Py_NDIErrcodeMacro(NDI_FILE_NOT_FOUND);
+  Py_NDIErrcodeMacro(NDI_FERR_WRITE);
+  Py_NDIErrcodeMacro(NDI_FERR_READ);
+  Py_NDIErrcodeMacro(NDI_RESERVED3E);
+  Py_NDIErrcodeMacro(NDI_RESERVED3F);
+  Py_NDIErrcodeMacro(NDI_DEF_FILE_ERR);
+  Py_NDIErrcodeMacro(NDI_BAD_CHARACTERISTICS);
+  Py_NDIErrcodeMacro(NDI_NO_DEVICE);
 
   Py_NDIErrcodeMacro(NDI_ENVIRONMENT);
 
