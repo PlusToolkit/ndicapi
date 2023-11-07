@@ -1764,7 +1764,6 @@ ndicapiExport MOD_INIT(ndicapy)
 
   Py_NDIConstantMacro(NDI_OKAY);
 
-  Py_NDIErrcodeMacro(NDI_OKAY);
   Py_NDIErrcodeMacro(NDI_INVALID);
   Py_NDIErrcodeMacro(NDI_TOO_LONG);
   Py_NDIErrcodeMacro(NDI_TOO_SHORT);
