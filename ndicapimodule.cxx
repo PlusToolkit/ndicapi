@@ -26,7 +26,11 @@
   #define PyString_AsString PyUnicode_AsUTF8
   #define PyIntObject PyLongObject
   //#define PY_INT_OBJECT_OB_IVAL(ob) PyLong_AsLong((PyObject*)(ob))
-  #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
+  #if PY_MINOR_VERSION < 12
+    #define PY_INT_OBJECT_OB_IVAL(ob) ob->ob_digit[0]
+  #else
+    #define PY_INT_OBJECT_OB_IVAL(ob) ob->long_value.ob_digit[0]
+  #endif
   #define cmpfunc PyAsyncMethods*
 #else
   #define MOD_ERROR_VAL
