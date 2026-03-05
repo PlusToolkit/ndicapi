@@ -1175,6 +1175,37 @@ static PyObject* Py_ndiGetTXFrame(PyObject* module, PyObject* args)
   return NULL;
 }
 
+static PyObject* Py_ndiGetTXNumberOfPassiveStrays(PyObject* module,
+    PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetTXNumberOfPassiveStrays",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetTXNumberOfPassiveStrays(pol);
+    return PyInt_FromLong(result);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetBXNumberOfPassiveStrays(PyObject* module,
+    PyObject* args)
+{
+  int result;
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&:plGetBXNumberOfPassiveStrays",
+                       &_ndiConverter, &pol))
+  {
+    result = ndiGetBXNumberOfPassiveStrays(pol);
+    return PyInt_FromLong(result);
+  }
+
+  return NULL;
+}
 
 static PyObject* Py_ndiGetGXNumberOfPassiveStrays(PyObject* module,
     PyObject* args)
@@ -1203,6 +1234,60 @@ static PyObject* Py_ndiGetGXPassiveStray(PyObject* module, PyObject* args)
                        &_ndiConverter, &pol, &i))
   {
     result = ndiGetGXPassiveStray(pol, i, coord);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetBXPassiveStray(PyObject* module, PyObject* args)
+{
+  int result;
+  int i;
+  float coord[3];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&i:plGetBXPassiveStray",
+                       &_ndiConverter, &pol, &i))
+  {
+    result = ndiGetBXPassiveStray(pol, i, coord);
+
+    if (result == NDI_MISSING)
+    {
+      return PyString_FromString("MISSING");
+    }
+    else if (result == NDI_DISABLED)
+    {
+      return PyString_FromString("DISABLED");
+    }
+
+    return Py_BuildValue("(ddd)", coord[0], coord[1], coord[2]);
+  }
+
+  return NULL;
+}
+
+static PyObject* Py_ndiGetTXPassiveStray(PyObject* module, PyObject* args)
+{
+  int result;
+  int i;
+  double coord[3];
+  ndicapi* pol;
+
+  if (PyArg_ParseTuple(args, "O&i:plGetTXPassiveStray",
+                       &_ndiConverter, &pol, &i))
+  {
+    result = ndiGetTXPassiveStray(pol, i, coord);
 
     if (result == NDI_MISSING)
     {
@@ -1657,8 +1742,8 @@ static PyMethodDef NdicapiMethods[] =
   //Py_NDIMethodMacro(ndiGetBXMarkerInfo),
   //Py_NDIMethodMacro(ndiGetBXSingleStray),
   Py_NDIMethodMacro(ndiGetBXFrame),
-  //Py_NDIMethodMacro(ndiGetBXNumberOfPassiveStrays),
-  //Py_NDIMethodMacro(ndiGetBXPassiveStray),
+  Py_NDIMethodMacro(ndiGetBXNumberOfPassiveStrays),
+  Py_NDIMethodMacro(ndiGetBXPassiveStray),
 
   Py_NDIMethodMacro(ndiTX),
 
@@ -1669,8 +1754,8 @@ static PyMethodDef NdicapiMethods[] =
   //Py_NDIMethodMacro(ndiGetTXMarkerInfo),
   //Py_NDIMethodMacro(ndiGetTXSingleStray),
   Py_NDIMethodMacro(ndiGetTXFrame),
-  //Py_NDIMethodMacro(ndiGetTXNumberOfPassiveStrays),
-  //Py_NDIMethodMacro(ndiGetTXPassiveStray),
+  Py_NDIMethodMacro(ndiGetTXNumberOfPassiveStrays),
+  Py_NDIMethodMacro(ndiGetTXPassiveStray),
 
 
   Py_NDIMethodMacro(ndiLED),
