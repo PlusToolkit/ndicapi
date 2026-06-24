@@ -505,7 +505,7 @@ ndicapiExport void ndiTimeoutSocket(ndicapi* pol, int timeoutMsec);
 #define ndiINIT(p) ndiCommand((p),"INIT:")
 
 /*!
-  Set the POLARIS infrared firing rate to 20 Hz = 0, 30 Hz = 1, 20 Hz = 2
+  Set the POLARIS infrared firing rate to 20 Hz = 0, 30 Hz = 1, 60 Hz = 2
 */
 #define ndiIRATE(p,rate) ndiCommand((p),"IRATE:%d",(rate))
 
@@ -2068,7 +2068,7 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define NDI_HANDLE_NOT_ALLOC       0x2B /*!<\brief The requested port handle has not been allocated. */
 #define NDI_HANDLE_EMPTY           0x2C /*!<\brief The requested port handle has become unoccupied. */
 #define NDI_HANDLES_FULL           0x2D /*!<\brief All handles have been allocated. */
-#define NDI_INCOMP_FIRM_VER        0x2E /*!<\brief Incompatible firmware versions.This can occur if: • a firmware update failed • components with incompatible firmware are connected To correct the problem, update the firmware.If the Multi Firmware feature is installed, select a valid combined firmware revision.For more information, see “Multi Firmware Feature” on page 197. */
+#define NDI_INCOMP_FIRM_VER        0x2E /*!<\brief Incompatible firmware versions.This can occur if: Â• a firmware update failed Â• components with incompatible firmware are connected To correct the problem, update the firmware.If the Multi Firmware feature is installed, select a valid combined firmware revision.For more information, see Â“Multi Firmware FeatureÂ” on page 197. */
 #define NDI_INV_PORT_DESC          0x2F /*!<\brief Invalid port description. */
 #define NDI_PORT_HAS_HANDLE        0x30 /*!<\brief Requested port is already assigned a port handle. */
 #define NDI_RESERVED31             0x31 /*!<\brief Reserved 0x31 */
@@ -2086,8 +2086,8 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define NDI_FERR_READ              0x3D /*!<\brief Error reading from file. */
 #define NDI_RESERVED3E             0x3E /*!<\brief Reserved 0x3E */
 #define NDI_RESERVED3F             0x3F /*!<\brief Reserved 0x3F*/
-#define NDI_DEF_FILE_ERR           0x40 /*!<\brief Tool Definition File Error.This occurs if: • the CRC failed • the file format is invalid */
-#define NDI_BAD_CHARACTERISTICS    0x41 /*!<\brief Tool characteristics not supported.This occurs when one of the following fields in the tool definition file is outside of the range supported by the system : • number of markers • number of faces • number of groups • number of markers per face(unique geometry tools only) */
+#define NDI_DEF_FILE_ERR           0x40 /*!<\brief Tool Definition File Error.This occurs if: Â• the CRC failed Â• the file format is invalid */
+#define NDI_BAD_CHARACTERISTICS    0x41 /*!<\brief Tool characteristics not supported.This occurs when one of the following fields in the tool definition file is outside of the range supported by the system : Â• number of markers Â• number of faces Â• number of groups Â• number of markers per face(unique geometry tools only) */
 #define NDI_NO_DEVICE              0x42 /*!<\brief Device not present.This occurs when the command is specific to a device that is not connected to the system. */
 
 #define NDI_ENVIRONMENT     0xf1  /*!<\brief Too much environmental infrared */
@@ -2119,12 +2119,12 @@ ndicapiExport void* ndiHexDecode(void* data, const char* cp, int n);
 #define NDI_COMPONENTID_3D         0x0003
 #define NDI_COMPONENTID_1D         0x0004
 #define NDI_COMPONENTID_2D         0x0005
-// 06 – reserved
-// 07 – reserved
+// 06 Â– reserved
+// 07 Â– reserved
 #define NDI_COMPONENTID_LINE_SEP   0x0008
 #define NDI_COMPONENTID_3D_ERROR   0x0009
 #define NDI_COMPONENTID_IMAGE      0x0010
-// 11 to 16 – reserved
+// 11 to 16 Â– reserved
 #define NDI_COMPONENTID_UV         0x0011
 #define NDI_COMPONENTID_SYS_ALERT  0x0012
 /*\}*/
