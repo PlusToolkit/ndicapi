@@ -760,6 +760,8 @@ static PyObject* Py_ndiCommand(PyObject* module, PyObject* args)
   }
   else
   {
+    Py_DECREF(initial);
+    Py_DECREF(remainder);
     // Assumes caller manages threads.
     Py_BEGIN_ALLOW_THREADS
     result = ndiCommand(pol, NULL);
